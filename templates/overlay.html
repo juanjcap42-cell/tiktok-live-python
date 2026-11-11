@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Tap Tap - Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #00ff00;
+            overflow: hidden;
+            width: 1920px;
+            height: 1080px;
+            font-family: 'Segoe UI', sans-serif;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20px;
+        }
+
+        .overlay-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* CUADRO 1: Ranking de taps */
+        .ranking-box {
+            width: 320px;
+            min-height: 500px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 20px;
+            padding: 20px;
+            border: 3px solid #FFD700;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8),
+                        0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .ranking-box h2 {
+            text-align: center;
+            color: #FFD700;
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        .ranking-list {
+            list-style: none;
+        }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .rank-item:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .rank-item img.avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 3px solid #FFD700;
+            object-fit: cover;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+        }
+
+        .rank-info { flex: 1; min-width: 0; }
+        
+        .rank-name { 
+            font-weight: 700; 
+            font-size: 16px; 
+            color: white; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Arial Black', sans-serif;
+        }
+        
+        .rank-taps { 
+            font-size: 14px; 
+            color: #FFD700; 
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        .pos-1-item { border-left-color: #FFD700; background: rgba(255, 215, 0, 0.1); }
+        .pos-2-item { border-left-color: #C0C0C0; }
+        .pos-3-item { border-left-color: #CD7F32; }
+
+        .rank-position {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-right: 10px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        /* CUADRO 2: Pelotitas rebotando */
+        .pelotas-box {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 20px;
+            padding: 20px;
+            border: 3px solid #FFD700;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8),
+                        0 0 20px rgba(255, 215, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 280px;
+            height: 460px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #FFD700;
+            background: #00ff00;
+        }
+
+        #canvas {
+            display: block;
+            width: 280px;
+            height: 460px;
+        }
+
+        .sin-usuarios {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #FFFFFF;
+            font-size: 18px;
+            text-align: center;
+            z-index: 20;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        /* Control de tamaño FUERA del cuadro de pelotitas */
+        .control-tamano {
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 2px solid #FFD700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .control-tamano label {
+            color: #FFD700;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .control-tamano input[type="range"] {
+            width: 120px;
+            cursor: pointer;
+            accent-color: #FFD700;
+        }
+
+        .control-tamano .valor {
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .rank-item {
+            animation: slideIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-container">
+        <!-- CUADRO 1: Ranking de taps -->
+        <div class="ranking-box">
+            <h2>🏆 TOP TAP TAP</h2>
+            <ul class="ranking-list" id="rankingList">
+                <li style="text-align:center;color:#666;padding:20px;">Esperando taps...</li>
+            </ul>
+        </div>
+
+        <!-- CUADRO 2: Pelotitas rebotando -->
+        <div class="pelotas-box">
+            <div id="canvas-container">
+                <div class="sin-usuarios" id="sinUsuarios">Esperando... 💪</div>
+                <canvas id="canvas" width="280" height="460"></canvas>
+            </div>
+            <!-- Control de tamaño FUERA del canvas -->
+            <div class="control-tamano">
+                <label>⚙️ Tamaño:</label>
+                <input type="range" id="tamanoSlider" min="25" max="60" value="40">
+                <span class="valor" id="tamanoValor">40</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const socket = io();
+        const sinUsuariosDiv = document.getElementById('sinUsuarios');
+        const rankingList = document.getElementById('rankingList');
+        const tamanoSlider = document.getElementById('tamanoSlider');
+        const tamanoValor = document.getElementById('tamanoValor');
+
+        let pelotas = [];
+        let particulas = [];
+        let rankingActual = [];
+        let rankingLista = [];
+        let TAMANO_PELOTA = 40;
+
+        // ============ CONFIGURACIÓN DE VELOCIDAD ============
+        const VELOCIDAD_INICIAL = 2;      // Velocidad inicial (más bajo = más lento)
+        const VELOCIDAD_MINIMA = 1;       // Velocidad mínima (nunca se detienen)
+        const VELOCIDAD_MAXIMA = 3.5;     // Velocidad máxima (no se vuelven locas)
+        const IMPULSO_REBOTE = 1.0;       // 1.0 = sin impulso extra, 1.05 = un poquito más
+
+        // Control de tamaño de pelotitas
+        tamanoSlider.addEventListener('input', (e) => {
+            TAMANO_PELOTA = parseInt(e.target.value);
+            tamanoValor.textContent = TAMANO_PELOTA;
+            
+            pelotas.forEach(pelota => {
+                pelota.radio = TAMANO_PELOTA;
+            });
+        });
+
+        class Pelota {
+            constructor(posicion, usuario) {
+                this.posicion = posicion;
+                this.usuario = usuario;
+                this.x = Math.random() * (canvas.width - TAMANO_PELOTA * 2) + TAMANO_PELOTA;
+                this.y = Math.random() * (canvas.height - TAMANO_PELOTA * 2) + TAMANO_PELOTA;
+                
+                // Velocidad inicial LENTA
+                this.vx = (Math.random() - 0.5) * VELOCIDAD_INICIAL;
+                this.vy = (Math.random() - 0.5) * VELOCIDAD_INICIAL;
+                
+                // Asegurar velocidad mínima inicial
+                if (Math.abs(this.vx) < 0.5) this.vx = this.vx > 0 ? 1 : -1;
+                if (Math.abs(this.vy) < 0.5) this.vy = this.vy > 0 ? 1 : -1;
+                
+                this.radio = TAMANO_PELOTA;
+                this.imagen = new Image();
+                this.imagen.crossOrigin = "anonymous";
+                this.imagen.src = usuario.avatar || '';
+                this.coronaOffset = 0;
+                this.coronaDirection = 1;
+                this.escala = 1;
+                this.escalaTarget = 1;
+                this.masa = 1;
+            }
+
+            actualizar() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Rebote en los bordes (SIN impulso extra para mantener velocidad lenta)
+                if (this.x - this.radio < 0) {
+                    this.vx = Math.abs(this.vx) * IMPULSO_REBOTE;
+                    this.x = this.radio;
+                }
+                if (this.x + this.radio > canvas.width) {
+                    this.vx = -Math.abs(this.vx) * IMPULSO_REBOTE;
+                    this.x = canvas.width - this.radio;
+                }
+                if (this.y - this.radio < 0) {
+                    this.vy = Math.abs(this.vy) * IMPULSO_REBOTE;
+                    this.y = this.radio;
+                }
+                if (this.y + this.radio > canvas.height) {
+                    this.vy = -Math.abs(this.vy) * IMPULSO_REBOTE;
+                    this.y = canvas.height - this.radio;
+                }
+
+                // Limitar velocidad máxima (MÁS LENTA)
+                const velocidadActual = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (velocidadActual > VELOCIDAD_MAXIMA) {
+                    this.vx = (this.vx / velocidadActual) * VELOCIDAD_MAXIMA;
+                    this.vy = (this.vy / velocidadActual) * VELOCIDAD_MAXIMA;
+                }
+                
+                // Velocidad mínima (para que nunca se detengan)
+                if (velocidadActual < VELOCIDAD_MINIMA && velocidadActual > 0) {
+                    this.vx = (this.vx / velocidadActual) * VELOCIDAD_MINIMA;
+                    this.vy = (this.vy / velocidadActual) * VELOCIDAD_MINIMA;
+                }
+
+                this.coronaOffset += 0.08 * this.coronaDirection;
+                if (this.coronaOffset > 8 || this.coronaOffset < 0) {
+                    this.coronaDirection *= -1;
+                }
+
+                this.escala += (this.escalaTarget - this.escala) * 0.1;
+            }
+
+            dibujar() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.escala, this.escala);
+
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 4;
+
+                const gradiente = ctx.createRadialGradient(0, 0, 5, 0, 0, this.radio);
+                if (this.posicion === 1) {
+                    gradiente.addColorStop(0, '#FFF8DC');
+                    gradiente.addColorStop(0.7, '#FFD700');
+                    gradiente.addColorStop(1, '#B8860B');
+                } else if (this.posicion === 2) {
+                    gradiente.addColorStop(0, '#FFFFFF');
+                    gradiente.addColorStop(0.7, '#C0C0C0');
+                    gradiente.addColorStop(1, '#808080');
+                } else {
+                    gradiente.addColorStop(0, '#FFE4C4');
+                    gradiente.addColorStop(0.7, '#CD7F32');
+                    gradiente.addColorStop(1, '#8B4513');
+                }
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radio, 0, Math.PI * 2);
+                ctx.fillStyle = gradiente;
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.shadowColor = 'transparent';
+
+                if (this.imagen.complete && this.imagen.naturalWidth > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radio - 6, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(this.imagen, -this.radio + 6, -this.radio + 6, 
+                                 (this.radio - 6) * 2, (this.radio - 6) * 2);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radio - 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = `bold ${this.radio * 0.7}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const inicial = this.usuario.nickname ? this.usuario.nickname.charAt(0).toUpperCase() : '?';
+                    ctx.fillText(inicial, 0, 0);
+                }
+
+                ctx.restore();
+
+                if (this.posicion === 1) {
+                    this.dibujarCorona();
+                }
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = `bold ${this.radio * 0.55}px Arial Black`;
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.strokeText(`#${this.posicion}`, this.x, this.y + this.radio + 20);
+                ctx.fillText(`#${this.posicion}`, this.x, this.y + this.radio + 20);
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = `bold ${this.radio * 0.35}px Arial`;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                const nombreCorto = this.usuario.nickname.length > 10 ? 
+                    this.usuario.nickname.substring(0, 10) + '..' : this.usuario.nickname;
+                ctx.strokeText(nombreCorto, this.x, this.y + this.radio + 40);
+                ctx.fillText(nombreCorto, this.x, this.y + this.radio + 40);
+            }
+
+            dibujarCorona() {
+                const coronaY = -this.radio - 20 + this.coronaOffset;
+                const tamano = this.radio * 0.55;
+
+                ctx.save();
+                ctx.translate(this.x, coronaY);
+
+                ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+                ctx.shadowBlur = 10;
+
+                ctx.fillStyle = '#FFD700';
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.moveTo(-tamano, tamano * 0.6);
+                ctx.lineTo(-tamano, -tamano * 0.3);
+                ctx.lineTo(-tamano * 0.5, tamano * 0.1);
+                ctx.lineTo(0, -tamano * 0.5);
+                ctx.lineTo(tamano * 0.5, tamano * 0.1);
+                ctx.lineTo(tamano, -tamano * 0.3);
+                ctx.lineTo(tamano, tamano * 0.6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.shadowColor = 'transparent';
+
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(0, tamano * 0.1, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Particula {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 15;
+                this.vy = (Math.random() - 0.5) * 15;
+                this.vida = 1;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.color = color;
+                this.tamano = Math.random() * 8 + 4;
+                this.rotacion = Math.random() * Math.PI * 2;
+                this.rotacionVel = (Math.random() - 0.5) * 0.3;
+            }
+
+            actualizar() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3;
+                this.vx *= 0.99;
+                this.vida -= this.decay;
+                this.rotacion += this.rotacionVel;
+            }
+
+            dibujar() {
+                ctx.save();
+                ctx.globalAlpha = this.vida;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotacion);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.tamano / 2, -this.tamano / 2, this.tamano, this.tamano);
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function crearExplosion(x, y) {
+            const colores = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#FF69B4'];
+            for (let i = 0; i < 40; i++) {
+                const color = colores[Math.floor(Math.random() * colores.length)];
+                particulas.push(new Particula(x, y, color));
+            }
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // ============ FÍSICA DE COLISIÓN MEJORADA ============
+        function detectarColisiones() {
+            for (let i = 0; i < pelotas.length; i++) {
+                for (let j = i + 1; j < pelotas.length; j++) {
+                    const p1 = pelotas[i];
+                    const p2 = pelotas[j];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const distancia = Math.sqrt(dx * dx + dy * dy);
+                    const distanciaMinima = p1.radio + p2.radio;
+
+                    if (distancia < distanciaMinima && distancia > 0) {
+                        const nx = dx / distancia;
+                        const ny = dy / distancia;
+
+                        const overlap = distanciaMinima - distancia;
+                        const separacion = overlap / 2 + 2;
+                        
+                        p1.x -= nx * separacion;
+                        p1.y -= ny * separacion;
+                        p2.x += nx * separacion;
+                        p2.y += ny * separacion;
+
+                        const dvx = p2.vx - p1.vx;
+                        const dvy = p2.vy - p1.vy;
+                        const velocidadRelativaNormal = dvx * nx + dvy * ny;
+
+                        if (velocidadRelativaNormal < 0) {
+                            const restitucion = 0.85; // Rebote suave (0.85 = pierden un poco de energía)
+                            const impulso = -(1 + restitucion) * velocidadRelativaNormal / 
+                                          (1/p1.masa + 1/p2.masa);
+
+                            p1.vx -= (impulso / p1.masa) * nx;
+                            p1.vy -= (impulso / p1.masa) * ny;
+                            p2.vx += (impulso / p2.masa) * nx;
+                            p2.vy += (impulso / p2.masa) * ny;
+
+                            // Asegurar velocidad mínima después de la colisión
+                            const vel1 = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
+                            const vel2 = Math.sqrt(p2.vx * p2.vx + p2.vy * p2.vy);
+                            if (vel1 < VELOCIDAD_MINIMA) {
+                                p1.vx = (p1.vx / (vel1 || 1)) * VELOCIDAD_MINIMA;
+                                p1.vy = (p1.vy / (vel1 || 1)) * VELOCIDAD_MINIMA;
+                            }
+                            if (vel2 < VELOCIDAD_MINIMA) {
+                                p2.vx = (p2.vx / (vel2 || 1)) * VELOCIDAD_MINIMA;
+                                p2.vy = (p2.vy / (vel2 || 1)) * VELOCIDAD_MINIMA;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function actualizarPelotas() {
+            if (rankingActual.length > 0) {
+                sinUsuariosDiv.style.display = 'none';
+            } else {
+                sinUsuariosDiv.style.display = 'block';
+            }
+
+            pelotas.forEach((pelota, index) => {
+                if (rankingActual[index]) {
+                    const nuevoUsuario = rankingActual[index];
+                    const posicionAnterior = pelota.posicion;
+                    pelota.usuario = nuevoUsuario;
+                    pelota.posicion = index + 1;
+                    pelota.radio = TAMANO_PELOTA;
+                    
+                    if (pelota.imagen.src !== nuevoUsuario.avatar) {
+                        pelota.imagen = new Image();
+                        pelota.imagen.crossOrigin = "anonymous";
+                        pelota.imagen.src = nuevoUsuario.avatar || '';
+                    }
+                    
+                    if (posicionAnterior !== pelota.posicion) {
+                        pelota.escalaTarget = 1.3;
+                        setTimeout(() => { pelota.escalaTarget = 1; }, 300);
+                    }
+                }
+            });
+
+            while (pelotas.length < rankingActual.length) {
+                const index = pelotas.length;
+                if (rankingActual[index]) {
+                    pelotas.push(new Pelota(index + 1, rankingActual[index]));
+                }
+            }
+
+            pelotas.splice(rankingActual.length);
+        }
+
+        function actualizarRankingLista() {
+            if (rankingLista.length === 0) {
+                rankingList.innerHTML = '<li style="text-align:center;color:#666;padding:20px;">Esperando taps...</li>';
+                return;
+            }
+
+            rankingList.innerHTML = '';
+            rankingLista.slice(0, 6).forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = `rank-item pos-${index + 1}-item`;
+                li.innerHTML = `
+                    <div class="rank-position">#${index + 1}</div>
+                    <img class="avatar" src="${item.avatar}" alt="${item.nickname}" 
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(item.nickname)}&background=random&color=fff&size=128'">
+                    <div class="rank-info">
+                        <div class="rank-name">${item.nickname}</div>
+                        <div class="rank-taps">🔥 ${item.totalLikes} taps</div>
+                    </div>
+                `;
+                rankingList.appendChild(li);
+            });
+        }
+
+        function animar() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            pelotas.forEach(pelota => {
+                pelota.actualizar();
+            });
+
+            for (let iter = 0; iter < 3; iter++) {
+                detectarColisiones();
+            }
+
+            pelotas.forEach(pelota => {
+                pelota.dibujar();
+            });
+
+            particulas = particulas.filter(p => p.vida > 0);
+            particulas.forEach(particula => {
+                particula.actualizar();
+                particula.dibujar();
+            });
+
+            requestAnimationFrame(animar);
+        }
+
+        socket.on('like', (data) => {
+            const existing = rankingLista.find(u => u.uniqueId === data.uniqueId);
+            if (existing) {
+                existing.totalLikes += data.likes;
+                existing.nickname = data.nickname;
+                if (data.avatar) existing.avatar = data.avatar;
+            } else {
+                rankingLista.push({
+                    uniqueId: data.uniqueId,
+                    nickname: data.nickname,
+                    avatar: data.avatar,
+                    totalLikes: data.likes
+                });
+            }
+
+            rankingLista.sort((a, b) => b.totalLikes - a.totalLikes);
+
+            const posicionesAnteriores = rankingActual.map(u => u?.uniqueId);
+            rankingActual = rankingLista.slice(0, 3);
+
+            actualizarPelotas();
+            actualizarRankingLista();
+
+            rankingActual.forEach((usuario, index) => {
+                const posicionAnterior = posicionesAnteriores.indexOf(usuario.uniqueId);
+                if (posicionAnterior !== -1 && posicionAnterior !== index) {
+                    const pelota = pelotas[index];
+                    if (pelota) {
+                        crearExplosion(pelota.x, pelota.y);
+                    }
+                }
+            });
+        });
+
+        socket.on('ranking-actualizado', (ranking) => {
+            rankingActual = ranking;
+            rankingLista = ranking;
+            actualizarPelotas();
+            actualizarRankingLista();
+        });
+
+        socket.on('cambio-posicion', (cambios) => {
+            cambios.forEach(cambio => {
+                console.log(`${cambio.nickname} ${cambio.tipo === 'subio' ? 'subió' : 'bajó'} de posición`);
+            });
+        });
+
+        animar();
+        socket.emit('solicitar-ranking');
+    </script>
+</body>
+</html>

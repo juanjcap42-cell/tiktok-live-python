@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Tap Tap - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #00ff88;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff0066;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .panel {
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .panel h2 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        }
+
+        button {
+            padding: 12px 25px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #00ffcc;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+
+        button:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-danger {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #ff6666;
+            box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .log-entry.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+            color: #ff6666;
+        }
+
+        .log-entry.success {
+            border-left-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .log-entry.info {
+            border-left-color: #00aaff;
+            background: rgba(0, 170, 255, 0.05);
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.connected {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .status.disconnected {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .links a {
+            color: #00ff88;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 12px 25px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .links a:hover {
+            background: #00ff88;
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .filter-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .filter-item label {
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .voz-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .voz-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .voz-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .voz-option label {
+            font-size: 14px;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 TOP TAP TAP</h1>
+
+        <div class="panel">
+            <h2>📡 Conexión a TikTok Live</h2>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="@usuario_de_tiktok" />
+                <button id="btnConectar" onclick="conectar()">⚡ CONECTAR</button>
+                <button id="btnDesconectar" class="btn-danger" onclick="desconectar()" disabled>🔴 DESCONECTAR</button>
+            </div>
+            <div>
+                Estado: <span id="estado" class="status disconnected">Desconectado</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🎙️ Chat de Voz</h2>
+            <div class="voz-options">
+                <div class="voz-option">
+                    <input type="checkbox" id="vozActivada" onchange="actualizarConfigVoz()">
+                    <label for="vozActivada">Activar chat de voz</label>
+                </div>
+                <div class="voz-option">
+                    <input type="checkbox" id="soloSeguidores" onchange="actualizarConfigVoz()">
+                    <label for="soloSeguidores">Solo seguidores</label>
+                </div>
+                <div class="voz-option">
+                    <input type="checkbox" id="soloDonadores" onchange="actualizarConfigVoz()">
+                    <label for="soloDonadores">Solo donadores</label>
+                </div>
+                <div class="voz-option">
+                    <input type="checkbox" id="soloQuiéreme" onchange="actualizarConfigVoz()">
+                    <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🛡️ Filtros de Mensajes</h2>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <input type="checkbox" id="filtroActivado" checked onchange="actualizarFiltros()">
+                    <label for="filtroActivado">Activar filtros</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="bloquearGroserias" checked onchange="actualizarFiltros()">
+                    <label for="bloquearGroserias">Bloquear groserías</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="bloquearEmojis" onchange="actualizarFiltros()">
+                    <label for="bloquearEmojis">Bloquear emojis</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="bloquearNumeros" onchange="actualizarFiltros()">
+                    <label for="bloquearNumeros">Bloquear números</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="bloquearEnlaces" checked onchange="actualizarFiltros()">
+                    <label for="bloquearEnlaces">Bloquear enlaces</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="bloquearSpam" checked onchange="actualizarFiltros()">
+                    <label for="bloquearSpam">Bloquear spam (mensajes repetidos)</label>
+                </div>
+                <div class="filter-item">
+                    <input type="checkbox" id="banearAutomatico" onchange="actualizarFiltros()">
+                    <label for="banearAutomatico">Baneo automático de 5 minutos</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📋 Registro de Actividad</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">Esperando conexión...</div>
+            </div>
+        </div>
+
+        <div class="links">
+            <a href="/overlay" target="_blank">🖼️ Abrir Overlay</a>
+            <a href="/ranking" target="_blank">🏆 Abrir Ranking Animado (1080x920)</a>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('✅ Conectado al servidor Python');
+        });
+
+        socket.on('log', (data) => {
+            agregarLog(data.msg, data.type || 'info');
+        });
+
+        socket.on('chat', (data) => {
+            agregarLog(`💬 ${data.nickname}: ${data.comment}`, 'success');
+        });
+
+        socket.on('like', (data) => {
+            agregarLog(`❤️ ${data.nickname} dio ${data.likes} taps`, 'success');
+        });
+
+        socket.on('gift', (data) => {
+            agregarLog(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
+        });
+
+        function conectar() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                agregarLog('❌ Ingresa un nombre de usuario', 'error');
+                return;
+            }
+            
+            socket.emit('conectar', { username: username });
+            
+            document.getElementById('btnConectar').disabled = true;
+            document.getElementById('username').disabled = true;
+            document.getElementById('btnDesconectar').disabled = false;
+            document.getElementById('estado').textContent = 'Conectado';
+            document.getElementById('estado').className = 'status connected';
+        }
+
+        function desconectar() {
+            socket.emit('desconectar');
+            document.getElementById('btnConectar').disabled = false;
+            document.getElementById('username').disabled = false;
+            document.getElementById('btnDesconectar').disabled = true;
+            document.getElementById('estado').textContent = 'Desconectado';
+            document.getElementById('estado').className = 'status disconnected';
+        }
+
+        function actualizarConfigVoz() {
+            const config = {
+                vozActivada: document.getElementById('vozActivada').checked,
+                soloSeguidores: document.getElementById('soloSeguidores').checked,
+                soloDonadores: document.getElementById('soloDonadores').checked,
+                soloQuiéreme: document.getElementById('soloQuiéreme').checked
+            };
+            
+            socket.emit('config-voz', config);
+            agregarLog('⚙️ Configuración de voz actualizada', 'info');
+        }
+
+        function actualizarFiltros() {
+            const config = {
+                filtroActivado: document.getElementById('filtroActivado').checked,
+                bloquearGroserias: document.getElementById('bloquearGroserias').checked,
+                bloquearEmojis: document.getElementById('bloquearEmojis').checked,
+                bloquearNumeros: document.getElementById('bloquearNumeros').checked,
+                bloquearEnlaces: document.getElementById('bloquearEnlaces').checked,
+                bloquearSpam: document.getElementById('bloquearSpam').checked,
+                banearAutomatico: document.getElementById('banearAutomatico').checked,
+                tiempoBaneo: 300
+            };
+            
+            socket.emit('actualizar-filtros', config);
+            agregarLog('✅ Filtros actualizados', 'success');
+        }
+
+        function agregarLog(mensaje, tipo) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${tipo}`;
+            
+            const hora = new Date().toLocaleTimeString();
+            entry.textContent = `[${hora}] ${mensaje}`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+from flask import Flask, render_template, request
+from flask_socketio import SocketIO, emit
+from TikTokLive import TikTokLiveClient
+from TikTokLive.events import ConnectEvent, CommentEvent, LikeEvent, GiftEvent
+from filtros import FiltrosManager
+from tts import TTSManager
+import threading
+import asyncio
+
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+client = None
+filtros_manager = FiltrosManager()
+tts_manager = TTSManager()
+
+# Estado de configuración de voz
+config_voz = {
+    'vozActivada': False,
+    'soloSeguidores': False,
+    'soloDonadores': False,
+    'nivelDonadorMinimo': 1,
+    'soloQuiéreme': False,
+    'cantidadQuiéremeMinima': 1
+}
+
+# Seguimiento de usuarios
+seguidores = set()
+donadores = {}
+
+# Ranking de likes (tap tap)
+ranking_likes = {}
+
+# Posiciones anteriores para detectar cambios
+posiciones_anteriores = {}
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/overlay')
+def overlay():
+    return render_template('overlay.html')
+
+@app.route('/ranking')
+def ranking():
+    return render_template('ranking.html')
+
+@socketio.on('conectar')
+def handle_conectar(data):
+    global client
+    username = data['username'].replace('@', '')
+    
+    print(f'🔄 Conectando a @{username}...')
+    
+    client = TikTokLiveClient(unique_id=username)
+    
+    @client.on(ConnectEvent)
+    async def on_connect(event):
+        print(f'✅ Conectado! Room ID: {event.room_id}')
+        socketio.emit('log', {'msg': f'✅ Conectado a @{username}', 'type': 'success'})
+    
+    @client.on(CommentEvent)
+    async def on_comment(event):
+        user = event.user
+        unique_id = user.unique_id
+        nickname = user.nickname
+        comentario = event.comment
+        
+        # Aplicar filtros
+        permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
+        
+        if not permitido:
+            print(f'🚫 {razon}: {nickname} - {comentario}')
+            socketio.emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
+            return
+        
+        # Limpiar texto para TTS
+        texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
+        
+        print(f'💬 {nickname}: {comentario}')
+        
+        # Enviar al dashboard
+        socketio.emit('chat', {
+            'nickname': nickname,
+            'comment': comentario,
+            'avatar': get_avatar_url(user),
+            'uniqueId': unique_id
+        })
+        
+        # Si el chat de voz está activado, agregar a la cola
+        if config_voz['vozActivada']:
+            debe_hablar = True
+            
+            if config_voz['soloSeguidores']:
+                debe_hablar = unique_id in seguidores
+            
+            if config_voz['soloDonadores'] and debe_hablar:
+                info_donador = donadores.get(unique_id, {'totalDiamantes': 0})
+                nivel_min = config_voz['nivelDonadorMinimo']
+                
+                if nivel_min == 1 and info_donador['totalDiamantes'] < 1:
+                    debe_hablar = False
+                elif nivel_min == 2 and info_donador['totalDiamantes'] < 50:
+                    debe_hablar = False
+                elif nivel_min == 3 and info_donador['totalDiamantes'] < 100:
+                    debe_hablar = False
+                elif nivel_min == 4 and info_donador['totalDiamantes'] < 500:
+                    debe_hablar = False
+                elif nivel_min == 5 and info_donador['totalDiamantes'] < 1000:
+                    debe_hablar = False
+            
+            if debe_hablar:
+                nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
+                texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
+                tts_manager.agregar_a_cola(texto_tts)
+                print(f'🔊 Agregado a cola: {texto_tts[:50]}...')
+    
+    @client.on(LikeEvent)
+    async def on_like(event):
+        user = event.user
+        unique_id = user.unique_id
+        likes = getattr(event, 'like_count', getattr(event, 'total_count', 1))
+        
+        # Marcar como seguidor
+        seguidores.add(unique_id)
+        
+        # Actualizar ranking de likes
+        if unique_id not in ranking_likes:
+            ranking_likes[unique_id] = {
+                'uniqueId': unique_id,
+                'nickname': user.nickname,
+                'avatar': get_avatar_url(user),
+                'totalLikes': 0
+            }
+        
+        ranking_likes[unique_id]['totalLikes'] += likes
+        ranking_likes[unique_id]['nickname'] = user.nickname
+        
+        # Actualizar avatar si no lo teníamos
+        avatar_url = get_avatar_url(user)
+        if avatar_url and (not ranking_likes[unique_id]['avatar'] or ranking_likes[unique_id]['avatar'] == ''):
+            ranking_likes[unique_id]['avatar'] = avatar_url
+        
+        print(f'❤️ {user.nickname} dio {likes} likes')
+        
+        # Enviar al overlay
+        socketio.emit('like', {
+            'nickname': user.nickname,
+            'likes': likes,
+            'avatar': get_avatar_url(user),
+            'uniqueId': unique_id
+        })
+        
+        # Enviar ranking actualizado
+        enviar_ranking_actualizado()
+    
+    @client.on(GiftEvent)
+    async def on_gift(event):
+        user = event.user
+        unique_id = user.unique_id
+        nombre_regalo = event.gift.name
+        diamantes = event.gift.diamond_count
+        
+        if unique_id not in donadores:
+            donadores[unique_id] = {'totalDiamantes': 0, 'rosas': 0}
+        
+        donadores[unique_id]['totalDiamantes'] += diamantes
+        
+        if 'rose' in nombre_regalo.lower() or 'quiéreme' in nombre_regalo.lower():
+            donadores[unique_id]['rosas'] += 1
+            rosas_actuales = donadores[unique_id]['rosas']
+            
+            print(f'🌹 {user.nickname} envió rosa #{rosas_actuales}')
+            
+            if config_voz['soloQuiéreme']:
+                min_rosas = config_voz['cantidadQuiéremeMinima']
+                if rosas_actuales >= min_rosas:
+                    nombre_limpio = filtros_manager.limpiar_nombre_para_tts(user.nickname)
+                    texto_tts = f"{nombre_limpio} envió una rosa Quiéreme"
+                    tts_manager.agregar_a_cola(texto_tts)
+                    print(f'🔊 Agregado a cola: {texto_tts}')
+        
+        print(f'🎁 {user.nickname} envió {nombre_regalo} ({diamantes} 💎)')
+        socketio.emit('gift', {
+            'nickname': user.nickname,
+            'gift': nombre_regalo,
+            'diamonds': diamantes,
+            'avatar': get_avatar_url(user),
+            'uniqueId': unique_id
+        })
+    
+    threading.Thread(target=lambda: asyncio.run(client.run()), daemon=True).start()
+    socketio.emit('log', {'msg': f'⏳ Conectando a @{username}...', 'type': 'info'})
+
+@socketio.on('desconectar')
+def handle_desconectar():
+    global client
+    if client:
+        client.stop()
+        client = None
+    socketio.emit('log', {'msg': '📴 Desconectado', 'type': 'info'})
+
+@socketio.on('config-voz')
+def handle_config_voz(config):
+    global config_voz
+    
+    if 'vozActivada' in config:
+        config_voz['vozActivada'] = config['vozActivada']
+        if config['vozActivada']:
+            tts_manager.iniciar_reproduccion()
+            socketio.emit('log', {'msg': '🔊 Chat de voz ACTIVADO - Escucharás los mensajes', 'type': 'success'})
+        else:
+            socketio.emit('log', {'msg': '🔇 Chat de voz DESACTIVADO', 'type': 'info'})
+    
+    if 'soloSeguidores' in config:
+        config_voz['soloSeguidores'] = config['soloSeguidores']
+    
+    if 'soloDonadores' in config:
+        config_voz['soloDonadores'] = config['soloDonadores']
+    
+    if 'nivelDonadorMinimo' in config:
+        config_voz['nivelDonadorMinimo'] = config['nivelDonadorMinimo']
+    
+    if 'soloQuiéreme' in config:
+        config_voz['soloQuiéreme'] = config['soloQuiéreme']
+    
+    if 'cantidadQuiéremeMinima' in config:
+        config_voz['cantidadQuiéremeMinima'] = config['cantidadQuiéremeMinima']
+    
+    if 'filtros' in config:
+        filtros_manager.set_config(config['filtros'])
+        socketio.emit('log', {'msg': '⚙️ Filtros actualizados', 'type': 'success'})
+    
+    print(f'⚙️ Config voz: {config_voz}')
+    print(f'⚙️ Config filtros: {filtros_manager.get_config()}')
+
+@socketio.on('actualizar-filtros')
+def handle_actualizar_filtros(config):
+    filtros_manager.set_config(config)
+    socketio.emit('log', {'msg': '✅ Filtros actualizados', 'type': 'success'})
+
+@socketio.on('solicitar-ranking')
+def handle_solicitar_ranking():
+    """Envía el ranking actual al solicitarlo"""
+    enviar_ranking_actualizado()
+
+def enviar_ranking_actualizado():
+    """Envía el ranking actualizado y detecta cambios de posición"""
+    global posiciones_anteriores
+    
+    # Ordenar por total de likes (descendente)
+    ranking_ordenado = sorted(
+        ranking_likes.values(),
+        key=lambda x: x['totalLikes'],
+        reverse=True
+    )[:3]  # Solo top 3
+    
+    # Detectar cambios de posición
+    cambios = []
+    for i, usuario in enumerate(ranking_ordenado):
+        unique_id = usuario['uniqueId']
+        posicion_actual = i + 1
+        
+        if unique_id in posiciones_anteriores:
+            posicion_anterior = posiciones_anteriores[unique_id]
+            
+            if posicion_anterior > posicion_actual:
+                cambios.append({
+                    'uniqueId': unique_id,
+                    'nickname': usuario['nickname'],
+                    'avatar': usuario['avatar'],
+                    'posicionAnterior': posicion_anterior,
+                    'posicionActual': posicion_actual,
+                    'tipo': 'subio'
+                })
+                print(f'🚀 {usuario["nickname"]} SUBIÓ de #{posicion_anterior} a #{posicion_actual}')
+            elif posicion_anterior < posicion_actual:
+                cambios.append({
+                    'uniqueId': unique_id,
+                    'nickname': usuario['nickname'],
+                    'avatar': usuario['avatar'],
+                    'posicionAnterior': posicion_anterior,
+                    'posicionActual': posicion_actual,
+                    'tipo': 'bajo'
+                })
+                print(f'⬇️ {usuario["nickname"]} BAJÓ de #{posicion_anterior} a #{posicion_actual}')
+        
+        posiciones_anteriores[unique_id] = posicion_actual
+    
+    # Emitir cambios si los hay
+    if cambios:
+        socketio.emit('cambio-posicion', cambios)
+    
+    # Emitir ranking actualizado
+    socketio.emit('ranking-actualizado', ranking_ordenado)
+
+def get_avatar_url(user):
+    """Extrae la URL del avatar de forma segura"""
+    try:
+        if hasattr(user, 'avatar_thumb') and user.avatar_thumb:
+            if hasattr(user.avatar_thumb, 'url_list'):
+                return user.avatar_thumb.url_list[0] if user.avatar_thumb.url_list else None
+        if hasattr(user, 'profile_pic') and user.profile_pic:
+            if hasattr(user.profile_pic, 'url_list'):
+                return user.profile_pic.url_list[0] if user.profile_pic.url_list else None
+        if isinstance(getattr(user, 'avatar_thumb', None), str):
+            return user.avatar_thumb
+        return None
+    except:
+        return None
+
+if __name__ == '__main__':
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    
+    print('🚀 Servidor iniciado')
+    print(f'📡 Puerto: {port}')
+    print('🎙️ Chat de voz listo - Actívalo desde el dashboard')
+    
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode, allow_unsafe_werkzeug=True)
