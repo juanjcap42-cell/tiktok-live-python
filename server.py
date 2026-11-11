@@ -3,16 +3,15 @@ from flask_socketio import SocketIO, emit
 from TikTokLive import TikTokLiveClient
 from TikTokLive.events import ConnectEvent, CommentEvent, LikeEvent, GiftEvent
 from filtros import FiltrosManager
-from tts import TTSManager
 import threading
 import asyncio
+import os
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 client = None
 filtros_manager = FiltrosManager()
-tts_manager = TTSManager()
 
 # Estado de configuración de voz
 config_voz = {
@@ -88,7 +87,7 @@ def handle_conectar(data):
             'uniqueId': unique_id
         })
         
-        # Si el chat de voz está activado, agregar a la cola
+        # Si el chat de voz está activado, enviar al navegador
         if config_voz['vozActivada']:
             debe_hablar = True
             
@@ -113,8 +112,9 @@ def handle_conectar(data):
             if debe_hablar:
                 nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
                 texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
-                tts_manager.agregar_a_cola(texto_tts)
-                print(f'🔊 Agregado a cola: {texto_tts[:50]}...')
+                # ✅ Enviar al navegador para Web Speech API
+                socketio.emit('tts', {'texto': texto_tts})
+                print(f'🔊 Enviado TTS: {texto_tts[:50]}...')
     
     @client.on(LikeEvent)
     async def on_like(event):
@@ -122,10 +122,8 @@ def handle_conectar(data):
         unique_id = user.unique_id
         likes = getattr(event, 'like_count', getattr(event, 'total_count', 1))
         
-        # Marcar como seguidor
         seguidores.add(unique_id)
         
-        # Actualizar ranking de likes
         if unique_id not in ranking_likes:
             ranking_likes[unique_id] = {
                 'uniqueId': unique_id,
@@ -137,14 +135,12 @@ def handle_conectar(data):
         ranking_likes[unique_id]['totalLikes'] += likes
         ranking_likes[unique_id]['nickname'] = user.nickname
         
-        # Actualizar avatar si no lo teníamos
         avatar_url = get_avatar_url(user)
         if avatar_url and (not ranking_likes[unique_id]['avatar'] or ranking_likes[unique_id]['avatar'] == ''):
             ranking_likes[unique_id]['avatar'] = avatar_url
         
         print(f'❤️ {user.nickname} dio {likes} likes')
         
-        # Enviar al overlay
         socketio.emit('like', {
             'nickname': user.nickname,
             'likes': likes,
@@ -152,7 +148,6 @@ def handle_conectar(data):
             'uniqueId': unique_id
         })
         
-        # Enviar ranking actualizado
         enviar_ranking_actualizado()
     
     @client.on(GiftEvent)
@@ -178,8 +173,8 @@ def handle_conectar(data):
                 if rosas_actuales >= min_rosas:
                     nombre_limpio = filtros_manager.limpiar_nombre_para_tts(user.nickname)
                     texto_tts = f"{nombre_limpio} envió una rosa Quiéreme"
-                    tts_manager.agregar_a_cola(texto_tts)
-                    print(f'🔊 Agregado a cola: {texto_tts}')
+                    socketio.emit('tts', {'texto': texto_tts})
+                    print(f'🔊 Enviado TTS: {texto_tts}')
         
         print(f'🎁 {user.nickname} envió {nombre_regalo} ({diamantes} 💎)')
         socketio.emit('gift', {
@@ -208,7 +203,6 @@ def handle_config_voz(config):
     if 'vozActivada' in config:
         config_voz['vozActivada'] = config['vozActivada']
         if config['vozActivada']:
-            tts_manager.iniciar_reproduccion()
             socketio.emit('log', {'msg': '🔊 Chat de voz ACTIVADO - Escucharás los mensajes', 'type': 'success'})
         else:
             socketio.emit('log', {'msg': '🔇 Chat de voz DESACTIVADO', 'type': 'info'})
@@ -242,21 +236,17 @@ def handle_actualizar_filtros(config):
 
 @socketio.on('solicitar-ranking')
 def handle_solicitar_ranking():
-    """Envía el ranking actual al solicitarlo"""
     enviar_ranking_actualizado()
 
 def enviar_ranking_actualizado():
-    """Envía el ranking actualizado y detecta cambios de posición"""
     global posiciones_anteriores
     
-    # Ordenar por total de likes (descendente)
     ranking_ordenado = sorted(
         ranking_likes.values(),
         key=lambda x: x['totalLikes'],
         reverse=True
-    )[:3]  # Solo top 3
+    )[:3]
     
-    # Detectar cambios de posición
     cambios = []
     for i, usuario in enumerate(ranking_ordenado):
         unique_id = usuario['uniqueId']
@@ -288,15 +278,12 @@ def enviar_ranking_actualizado():
         
         posiciones_anteriores[unique_id] = posicion_actual
     
-    # Emitir cambios si los hay
     if cambios:
         socketio.emit('cambio-posicion', cambios)
     
-    # Emitir ranking actualizado
     socketio.emit('ranking-actualizado', ranking_ordenado)
 
 def get_avatar_url(user):
-    """Extrae la URL del avatar de forma segura"""
     try:
         if hasattr(user, 'avatar_thumb') and user.avatar_thumb:
             if hasattr(user.avatar_thumb, 'url_list'):
@@ -311,7 +298,6 @@ def get_avatar_url(user):
         return None
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     

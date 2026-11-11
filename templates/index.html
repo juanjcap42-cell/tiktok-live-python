@@ -239,6 +239,16 @@
             font-size: 14px;
             flex: 1;
         }
+
+        .tts-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 170, 255, 0.1);
+            border-left: 4px solid #00aaff;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #00aaff;
+        }
     </style>
 </head>
 <body>
@@ -276,6 +286,9 @@
                     <input type="checkbox" id="soloQuiéreme" onchange="actualizarConfigVoz()">
                     <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
                 </div>
+            </div>
+            <div class="tts-status" id="ttsStatus">
+                💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
             </div>
         </div>
 
@@ -322,7 +335,7 @@
 
         <div class="links">
             <a href="/overlay" target="_blank">🖼️ Abrir Overlay</a>
-            <a href="/ranking" target="_blank">🏆 Abrir Ranking Animado (1080x920)</a>
+            <a href="/ranking" target="_blank">🏆 Abrir Ranking Animado</a>
         </div>
     </div>
 
@@ -331,7 +344,7 @@
         const socket = io();
 
         socket.on('connect', () => {
-            console.log('✅ Conectado al servidor Python');
+            console.log('✅ Conectado al servidor');
         });
 
         socket.on('log', (data) => {
@@ -348,6 +361,35 @@
 
         socket.on('gift', (data) => {
             agregarLog(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
+        });
+
+        // ✅ CHAT DE VOZ CON WEB SPEECH API
+        socket.on('tts', (data) => {
+            if ('speechSynthesis' in window) {
+                // Cancelar cualquier lectura anterior para no acumular
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(data.texto);
+                utterance.lang = 'es-MX';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // Intentar usar una voz en español
+                const voces = window.speechSynthesis.getVoices();
+                const vozEspanol = voces.find(v => v.lang.startsWith('es'));
+                if (vozEspanol) {
+                    utterance.voice = vozEspanol;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+                console.log('🔊 Leyendo:', data.texto);
+                
+                agregarLog(`🔊 ${data.texto}`, 'info');
+            } else {
+                console.log('❌ Tu navegador no soporta Web Speech API');
+                agregarLog('❌ Web Speech API no disponible', 'error');
+            }
         });
 
         function conectar() {
@@ -413,6 +455,14 @@
             
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
+        }
+
+        // Cargar voces disponibles (necesario en algunos navegadores)
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => {
+                console.log('✅ Voces cargadas:', window.speechSynthesis.getVoices().length);
+            };
         }
     </script>
 </body>
