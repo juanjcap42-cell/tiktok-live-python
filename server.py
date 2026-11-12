@@ -14,10 +14,9 @@ from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# ============ 1. INICIALIZAR FIREBASE DE FORMA SEGURA ============
+# ============ 1. INICIALIZAR FIREBASE ============
 if not firebase_admin._apps:
     try:
-        # Opción A: Archivo secreto de Render (ruta donde Render lo coloca automáticamente)
         cred_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'firebase-credentials.json')
         
         if os.path.exists(cred_path):
@@ -25,7 +24,6 @@ if not firebase_admin._apps:
             firebase_admin.initialize_app(cred)
             print(f"✅ Firebase conectado desde archivo: {cred_path}")
         else:
-            # Opción B: Variable de entorno con el JSON completo (fallback)
             cred_json = os.environ.get('FIREBASE_CREDENTIALS')
             if cred_json:
                 cred_dict = json.loads(cred_json)
@@ -33,24 +31,24 @@ if not firebase_admin._apps:
                 firebase_admin.initialize_app(cred)
                 print("✅ Firebase conectado desde variable de entorno")
             else:
-                print("⚠️ Firebase NO configurado. El sistema funcionará en modo local (sin guardar datos).")
+                print("⚠️ Firebase NO configurado. Modo local sin base de datos.")
     except Exception as e:
         print(f"❌ Error al inicializar Firebase: {e}")
 
-# Crear el cliente de base de datos solo si Firebase se inicializó correctamente
 db = firestore.client() if firebase_admin._apps else None
 if db:
-    print("📊 Firestore listo para operaciones de lectura/escritura")
+    print("📊 Firestore listo para operaciones")
 
 # ============ 2. CONFIGURACIÓN DE FLASK Y SOCKET.IO ============
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'top-tap-tap-secret-key-2026')
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# ✅ CAMBIO IMPORTANTE: Usar eventlet en lugar de threading
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 client = None
 filtros_manager = FiltrosManager()
 
-# Estado de configuración de voz
 config_voz = {
     'vozActivada': False,
     'soloSeguidores': False,
@@ -60,7 +58,6 @@ config_voz = {
     'cantidadQuiéremeMinima': 1
 }
 
-# Seguimiento de usuarios en memoria (se sincroniza con Firebase al conectar)
 seguidores = set()
 donadores = {}
 ranking_likes = {}
@@ -133,7 +130,7 @@ def cargar_donadores(streamer_email):
         print(f'❌ Error cargando donadores: {e}')
         return {}
 
-# ============ 4. DECORADOR DE PROTECCIÓN DE RUTAS ============
+# ============ 4. DECORADOR DE PROTECCIÓN ============
 def login_required(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
@@ -169,7 +166,7 @@ def register():
             flash('La contraseña debe tener al menos 6 caracteres', 'error')
             return render_template('register.html')
         if db is None:
-            flash('Base de datos no configurada. Contacta al administrador.', 'error')
+            flash('Base de datos no configurada.', 'error')
             return render_template('register.html')
         
         try:
@@ -181,16 +178,16 @@ def register():
             streamer_ref.set({
                 'nombre': nombre,
                 'email': email,
-                'password': password, # Nota: En producción real, esto debería estar hasheado (bcrypt)
+                'password': password,
                 'fecha_registro': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'tiktok_username': ''
             })
-            print(f'✅ Usuario registrado en Firebase: {nombre} ({email})')
-            flash('Cuenta creada exitosamente. Ahora puedes iniciar sesión.', 'success')
+            print(f'✅ Usuario registrado: {nombre} ({email})')
+            flash('Cuenta creada exitosamente.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
             print(f'❌ Error registrando: {e}')
-            flash('Error al registrar. Intenta de nuevo.', 'error')
+            flash('Error al registrar.', 'error')
             return render_template('register.html')
     
     return render_template('register.html')
@@ -215,13 +212,13 @@ def login():
             if doc.exists and doc.to_dict().get('password') == password:
                 session['user_id'] = email
                 session['user_name'] = doc.to_dict().get('nombre', email)
-                print(f'✅ Usuario inició sesión: {email}')
+                print(f'✅ Login: {email}')
                 return redirect(url_for('dashboard'))
             else:
                 flash('Correo o contraseña incorrectos', 'error')
                 return render_template('login.html')
         except Exception as e:
-            print(f'❌ Error en login: {e}')
+            print(f'❌ Error login: {e}')
             flash('Error al iniciar sesión.', 'error')
             return render_template('login.html')
     
@@ -258,11 +255,9 @@ def handle_conectar(data):
     streamer_email = session['user_id']
     username = data['username'].replace('@', '')
     
-    # Actualizar username del streamer en Firebase
     if db:
         db.collection('streamers').document(streamer_email).update({'tiktok_username': username})
     
-    # Cargar datos históricos desde Firebase
     seguidores = cargar_seguidores(streamer_email)
     donadores = cargar_donadores(streamer_email)
     print(f'📥 Datos cargados: {len(seguidores)} seguidores, {len(donadores)} donadores')
@@ -283,16 +278,27 @@ def handle_conectar(data):
             nickname = get_nickname(user)
             comentario = event.comment
             
+            print(f'💬 {nickname}: {comentario}')
+            emit('log', {'msg': f'💬 {nickname}: {comentario}', 'type': 'info'})
+            
             permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
             if not permitido:
+                print(f'🚫 {razon}: {nickname}')
                 emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
                 return
             
             texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
-            emit('chat', {'nickname': nickname, 'comment': comentario, 'avatar': get_avatar_url(user), 'uniqueId': unique_id})
+            
+            emit('chat', {
+                'nickname': nickname,
+                'comment': comentario,
+                'avatar': get_avatar_url(user),
+                'uniqueId': unique_id
+            })
             
             if config_voz['vozActivada']:
                 debe_hablar = True
+                
                 if config_voz['soloSeguidores'] and unique_id not in seguidores:
                     debe_hablar = False
                 
@@ -305,9 +311,13 @@ def handle_conectar(data):
                 
                 if debe_hablar:
                     nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
-                    emit('tts', {'texto': f"{nombre_limpio} dice: {texto_limpio}"})
+                    texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
+                    emit('tts', {'texto': texto_tts})
+                    print(f'🔊 TTS: {texto_tts[:50]}...')
         except Exception as e:
-            print(f'❌ Error en on_comment: {e}')
+            print(f'❌ Error on_comment: {e}')
+            import traceback
+            traceback.print_exc()
     
     @client.on(LikeEvent)
     async def on_like(event):
@@ -329,10 +339,11 @@ def handle_conectar(data):
             if avatar and not ranking_likes[unique_id]['avatar']:
                 ranking_likes[unique_id]['avatar'] = avatar
             
+            print(f'❤️ {nickname} dio {likes} likes')
             emit('like', {'nickname': nickname, 'likes': likes, 'avatar': avatar, 'uniqueId': unique_id})
             enviar_ranking_actualizado()
         except Exception as e:
-            print(f'❌ Error en on_like: {e}')
+            print(f'❌ Error on_like: {e}')
     
     @client.on(GiftEvent)
     async def on_gift(event):
@@ -361,7 +372,7 @@ def handle_conectar(data):
             
             emit('gift', {'nickname': nickname, 'gift': nombre_regalo, 'diamonds': diamantes, 'avatar': avatar, 'uniqueId': unique_id})
         except Exception as e:
-            print(f'❌ Error en on_gift: {e}')
+            print(f'❌ Error on_gift: {e}')
     
     threading.Thread(target=lambda: asyncio.run(client.run()), daemon=True).start()
     emit('log', {'msg': f'⏳ Conectando a @{username}...', 'type': 'info'})
@@ -408,7 +419,7 @@ def enviar_ranking_actualizado():
             if pos_anterior > pos_actual:
                 cambios.append({'uniqueId': unique_id, 'nickname': usuario['nickname'], 'avatar': usuario['avatar'], 'posicionAnterior': pos_anterior, 'posicionActual': pos_actual, 'tipo': 'subio'})
             elif pos_anterior < pos_actual:
-                cambios.append({'uniqueId': unique_id, 'nickname': usuario['PID'], 'avatar': usuario['avatar'], 'posicionAnterior': pos_anterior, 'posicionActual': pos_actual, 'tipo': 'bajo'})
+                cambios.append({'uniqueId': unique_id, 'nickname': usuario['nickname'], 'avatar': usuario['avatar'], 'posicionAnterior': pos_anterior, 'posicionActual': pos_actual, 'tipo': 'bajo'})
         posiciones_anteriores[unique_id] = pos_actual
     
     if cambios: emit('cambio-posicion', cambios)
@@ -431,13 +442,13 @@ def get_avatar_url(user):
     except:
         return None
 
-# ============ 9. INICIO DEL SERVIDOR ============
+# ============ 9. INICIO DEL SERVIDOR CON EVENTLET ============
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    print('🚀 Servidor Top Tap Tap con Firebase iniciado')
+    print('🚀 Servidor Top Tap Tap con Eventlet (WebSockets)')
     print(f'📡 Puerto: {port}')
-    print('🏆 Landing: http://localhost:' + str(port) + '/')
-    print('📊 Dashboard: http://localhost:' + str(port) + '/dashboard')
     
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=port)
+    # ✅ Usar eventlet en lugar de waitress
+    import eventlet
+    import eventlet.wsgi
+    eventlet.wsgi.server(eventlet.listen(('0.0.0.0', port)), app)
