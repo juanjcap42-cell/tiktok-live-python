@@ -1,12 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 from TikTokLive import TikTokLiveClient
 from TikTokLive.events import ConnectEvent, CommentEvent, LikeEvent, GiftEvent
 from filtros import FiltrosManager
 import threading
 import asyncio
 import os
-import functools
 import json
 from datetime import datetime
 
@@ -31,18 +30,20 @@ if not firebase_admin._apps:
                 firebase_admin.initialize_app(cred)
                 print("✅ Firebase conectado desde variable de entorno")
             else:
-                print("⚠️ Firebase NO configurado. Modo local sin base de datos.")
+                print("⚠️ Firebase NO configurado. Modo local.")
     except Exception as e:
-        print(f"❌ Error al inicializar Firebase: {e}")
+        print(f"❌ Error Firebase: {e}")
 
 db = firestore.client() if firebase_admin._apps else None
 if db:
-    print("📊 Firestore listo para operaciones")
+    print("📊 Firestore listo")
 
-# ============ 2. CONFIGURACIÓN DE FLASK Y SOCKET.IO ============
+# ============ 2. FLASK Y SOCKET.IO ============
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'top-tap-tap-secret-key-2026')
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# ✅ Modo threading (compatible con waitress)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 client = None
 filtros_manager = FiltrosManager()
@@ -61,7 +62,7 @@ donadores = {}
 ranking_likes = {}
 posiciones_anteriores = {}
 
-# ============ 3. FUNCIONES DE FIREBASE ============
+# ============ 3. FIREBASE FUNCTIONS ============
 def guardar_seguidor(streamer_email, unique_id, nickname, avatar):
     if db is None: return
     try:
@@ -75,7 +76,7 @@ def guardar_seguidor(streamer_email, unique_id, nickname, avatar):
             'ultima_vez': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }, merge=True)
     except Exception as e:
-        print(f'❌ Error guardando seguidor: {e}')
+        print(f'❌ Error seguidor: {e}')
 
 def guardar_donador(streamer_email, unique_id, nickname, diamantes, rosas=0):
     if db is None: return
@@ -103,7 +104,7 @@ def guardar_donador(streamer_email, unique_id, nickname, diamantes, rosas=0):
             'ultima_vez': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
     except Exception as e:
-        print(f'❌ Error guardando donador: {e}')
+        print(f'❌ Error donador: {e}')
 
 def cargar_seguidores(streamer_email):
     if db is None: return set()
@@ -128,22 +129,9 @@ def cargar_donadores(streamer_email):
         print(f'❌ Error cargando donadores: {e}')
         return {}
 
-# ============ 4. DECORADOR DE PROTECCIÓN ============
-def login_required(f):
-    @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# ============ 5. RUTAS PÚBLICAS ============
+# ============ 4. RUTAS ============
 @app.route('/')
 def home():
-    return render_template('landing.html')
-
-@app.route('/landing')
-def landing():
     return render_template('landing.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -227,10 +215,10 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# ============ 6. RUTAS PROTEGIDAS ============
 @app.route('/dashboard')
-@login_required
 def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/overlay')
@@ -241,62 +229,56 @@ def overlay():
 def ranking():
     return render_template('ranking.html')
 
-# ============ 7. EVENTOS SOCKET.IO ============
+# ============ 5. SOCKET.IO EVENTS ============
 @socketio.on('conectar')
 def handle_conectar(data):
     global client, seguidores, donadores
     
     if 'user_id' not in session:
-        emit('log', {'msg': '❌ Debes iniciar sesión primero', 'type': 'error'})
+        socketio.emit('log', {'msg': '❌ Debes iniciar sesión', 'type': 'error'})
         return
     
     streamer_email = session['user_id']
     username = data['username'].replace('@', '')
     
-    print(f'🔍 [DEBUG] Conectando a @{username} desde {streamer_email}')
+    print(f'🔄 Conectando a @{username}...')
     
     if db:
-        db.collection('streamers').document(streamer_email).update({'tiktok_username': username})
+        try:
+            db.collection('streamers').document(streamer_email).update({'tiktok_username': username})
+        except Exception as e:
+            print(f'⚠️ Error actualizando username: {e}')
     
     seguidores = cargar_seguidores(streamer_email)
     donadores = cargar_donadores(streamer_email)
-    print(f'📥 Datos cargados: {len(seguidores)} seguidores, {len(donadores)} donadores')
+    print(f'📥 Datos: {len(seguidores)} seguidores, {len(donadores)} donadores')
     
-    print(f'🔄 Conectando a @{username}...')
     client = TikTokLiveClient(unique_id=username)
     
+    # ✅ Callbacks de TikTokLive - USAR socketio.emit() (global)
     @client.on(ConnectEvent)
     async def on_connect(event):
-        print(f'✅ [DEBUG] Conectado! Room ID: {event.room_id}')
+        print(f'✅ Conectado! Room ID: {event.room_id}')
         socketio.emit('log', {'msg': f'✅ Conectado a @{username}', 'type': 'success'})
     
     @client.on(CommentEvent)
     async def on_comment(event):
         try:
-            print('🔍 [DEBUG] === EVENTO COMMENT RECIBIDO ===')
-            
             user = event.user
             unique_id = get_unique_id(user)
             nickname = get_nickname(user)
             comentario = event.comment
             
-            print(f'🔍 [DEBUG] Usuario: {nickname} | ID: {unique_id} | Mensaje: {comentario}')
-            
-            # Mostrar SIEMPRE el comentario en el dashboard (para diagnóstico)
+            print(f'💬 {nickname}: {comentario}')
             socketio.emit('log', {'msg': f'💬 {nickname}: {comentario}', 'type': 'info'})
             
-            # Verificar filtros
-            print(f'🔍 [DEBUG] Configuración de filtros: {filtros_manager.get_config()}')
             permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
-            print(f'🔍 [DEBUG] ¿Permitido? {permitido} | Razón: {razon}')
-            
             if not permitido:
-                print(f'🚫 [DEBUG] FILTRADO: {razon}')
-                socketio.emit('log', {'msg': f'🚫 {razon}: {nickname}', 'type': 'error'})
+                print(f'🚫 {razon}: {nickname}')
+                socketio.emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
                 return
             
             texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
-            print(f'🔍 [DEBUG] Texto limpio para TTS: {texto_limpio}')
             
             socketio.emit('chat', {
                 'nickname': nickname,
@@ -306,38 +288,25 @@ def handle_conectar(data):
             })
             
             if config_voz['vozActivada']:
-                print(f'🔊 [DEBUG] Chat de voz ACTIVADO, procesando TTS...')
                 debe_hablar = True
                 
-                if config_voz['soloSeguidores']:
-                    es_seguidor = unique_id in seguidores
-                    print(f'🔍 [DEBUG] ¿Es seguidor? {es_seguidor}')
-                    debe_hablar = es_seguidor
+                if config_voz['soloSeguidores'] and unique_id not in seguidores:
+                    debe_hablar = False
                 
                 if config_voz['soloDonadores'] and debe_hablar:
                     info = donadores.get(unique_id, {'totalDiamantes': 0})
                     nivel = config_voz['nivelDonadorMinimo']
                     umbrales = {1: 1, 2: 50, 3: 100, 4: 500, 5: 1000}
-                    umbral = umbrales.get(nivel, 1)
-                    print(f'🔍 [DEBUG] Diamantes: {info["totalDiamantes"]} | Umbral: {umbral}')
-                    if info['totalDiamantes'] < umbral:
+                    if info['totalDiamantes'] < umbrales.get(nivel, 1):
                         debe_hablar = False
                 
                 if debe_hablar:
                     nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
                     texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
-                    print(f'🔊 [DEBUG] EMITIENDO TTS: {texto_tts[:60]}')
                     socketio.emit('tts', {'texto': texto_tts})
-                else:
-                    print(f'🔇 [DEBUG] NO SE HABLA (debe_hablar=False)')
-            else:
-                print(f'🔇 [DEBUG] Chat de voz NO ACTIVADO (config_voz={config_voz["vozActivada"]})')
-                
+                    print(f'🔊 TTS: {texto_tts[:50]}...')
         except Exception as e:
-            print(f'❌ [ERROR] on_comment: {e}')
-            import traceback
-            traceback.print_exc()
-            socketio.emit('log', {'msg': f'❌ Error: {str(e)}', 'type': 'error'})
+            print(f'❌ Error on_comment: {e}')
     
     @client.on(LikeEvent)
     async def on_like(event):
@@ -347,8 +316,6 @@ def handle_conectar(data):
             nickname = get_nickname(user)
             likes = getattr(event, 'like_count', getattr(event, 'total_count', 1))
             avatar = get_avatar_url(user)
-            
-            print(f'❤️ [DEBUG] LIKE: {nickname} dio {likes}')
             
             seguidores.add(unique_id)
             guardar_seguidor(streamer_email, unique_id, nickname, avatar)
@@ -361,10 +328,11 @@ def handle_conectar(data):
             if avatar and not ranking_likes[unique_id]['avatar']:
                 ranking_likes[unique_id]['avatar'] = avatar
             
+            print(f'❤️ {nickname} dio {likes} likes')
             socketio.emit('like', {'nickname': nickname, 'likes': likes, 'avatar': avatar, 'uniqueId': unique_id})
             enviar_ranking_actualizado()
         except Exception as e:
-            print(f'❌ [ERROR] on_like: {e}')
+            print(f'❌ Error on_like: {e}')
     
     @client.on(GiftEvent)
     async def on_gift(event):
@@ -375,8 +343,6 @@ def handle_conectar(data):
             nombre_regalo = event.gift.name
             diamantes = event.gift.diamond_count
             avatar = get_avatar_url(user)
-            
-            print(f'🎁 [DEBUG] GIFT: {nickname} envió {nombre_regalo} ({diamantes} 💎)')
             
             es_rosa = 'rose' in nombre_regalo.lower() or 'quiéreme' in nombre_regalo.lower()
             rosas = 1 if es_rosa else 0
@@ -391,16 +357,26 @@ def handle_conectar(data):
             
             if es_rosa and config_voz['soloQuiéreme']:
                 if donadores[unique_id]['rosas'] >= config_voz['cantidadQuiéremeMinima']:
-                    socketio.emit('tts', {'texto': f"{filtros_manager.limpiar_nombre_para_tts(nickname)} envió una rosa Quiéreme"})
+                    socketio.emit('tts', {'texto': f"{filtros_manager.limpiar_nombre_para_tts(nickname)} envió una rosa"})
             
             socketio.emit('gift', {'nickname': nickname, 'gift': nombre_regalo, 'diamonds': diamantes, 'avatar': avatar, 'uniqueId': unique_id})
         except Exception as e:
-            print(f'❌ [ERROR] on_gift: {e}')
+            print(f'❌ Error on_gift: {e}')
     
-    # ✅ IMPORTANTE: Usar eventlet.spawn en lugar de threading.Thread
-    print(f'🚀 [DEBUG] Iniciando bucle de TikTokLive...')
-    eventlet.spawn(lambda: asyncio.run(client.run()))
-    emit('log', {'msg': f'⏳ Conectando a @{username}...', 'type': 'info'})
+    # ✅ Iniciar TikTokLive en thread separado
+    def run_tiktok():
+        try:
+            print(f'🚀 Iniciando bucle de TikTokLive para @{username}...')
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(client.run())
+        except Exception as e:
+            print(f'❌ Error en bucle de TikTokLive: {e}')
+    
+    thread = threading.Thread(target=run_tiktok, daemon=True)
+    thread.start()
+    
+    socketio.emit('log', {'msg': f'⏳ Conectando a @{username}...', 'type': 'info'})
 
 @socketio.on('desconectar')
 def handle_desconectar():
@@ -408,29 +384,24 @@ def handle_desconectar():
     if client:
         client.stop()
         client = None
-    emit('log', {'msg': '📴 Desconectado', 'type': 'info'})
+    socketio.emit('log', {'msg': '📴 Desconectado', 'type': 'info'})
 
 @socketio.on('config-voz')
 def handle_config_voz(config):
     global config_voz
-    print(f'🔧 [DEBUG] Actualizando config de voz: {config}')
-    
     for key in ['vozActivada', 'soloSeguidores', 'soloDonadores', 'nivelDonadorMinimo', 'soloQuiéreme', 'cantidadQuiéremeMinima']:
         if key in config: config_voz[key] = config[key]
     if 'filtros' in config:
         filtros_manager.set_config(config['filtros'])
-        emit('log', {'msg': '⚙️ Filtros actualizados', 'type': 'success'})
-    
-    print(f'🔧 [DEBUG] Config final: {config_voz}')
+        socketio.emit('log', {'msg': '⚙️ Filtros actualizados', 'type': 'success'})
     
     estado = "ACTIVADO" if config_voz['vozActivada'] else "DESACTIVADO"
-    emit('log', {'msg': f'🔊 Chat de voz {estado}', 'type': 'success' if config_voz['vozActivada'] else 'info'})
+    socketio.emit('log', {'msg': f'🔊 Chat de voz {estado}', 'type': 'success' if config_voz['vozActivada'] else 'info'})
 
 @socketio.on('actualizar-filtros')
 def handle_actualizar_filtros(config):
-    print(f'🔧 [DEBUG] Actualizando filtros: {config}')
     filtros_manager.set_config(config)
-    emit('log', {'msg': '✅ Filtros actualizados', 'type': 'success'})
+    socketio.emit('log', {'msg': '✅ Filtros actualizados', 'type': 'success'})
 
 @socketio.on('solicitar-ranking')
 def handle_solicitar_ranking():
@@ -455,7 +426,7 @@ def enviar_ranking_actualizado():
     if cambios: socketio.emit('cambio-posicion', cambios)
     socketio.emit('ranking-actualizado', ranking_ordenado)
 
-# ============ 8. FUNCIONES AUXILIARES ============
+# ============ 6. FUNCIONES AUXILIARES ============
 def get_unique_id(user):
     return getattr(user, 'unique_id', None) or getattr(user, 'uniqueId', None) or str(getattr(user, 'id', 'unknown'))
 
@@ -472,12 +443,11 @@ def get_avatar_url(user):
     except:
         return None
 
-# ============ 9. INICIO DEL SERVIDOR ============
+# ============ 7. INICIO ============
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    print('🚀 Servidor Top Tap Tap con Eventlet')
+    print('🚀 Servidor Top Tap Tap iniciado')
     print(f'📡 Puerto: {port}')
     
-    import eventlet
-    import eventlet.wsgi
-    eventlet.wsgi.server(eventlet.listen(('0.0.0.0', port)), app)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=port)
