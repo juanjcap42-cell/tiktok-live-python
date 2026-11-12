@@ -43,7 +43,7 @@ if db:
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'top-tap-tap-secret-key-2026')
 
-# ✅ CAMBIO IMPORTANTE: Usar eventlet en lugar de threading
+# ✅ Usar eventlet para WebSockets
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 client = None
@@ -265,10 +265,13 @@ def handle_conectar(data):
     print(f'🔄 Conectando a @{username}...')
     client = TikTokLiveClient(unique_id=username)
     
+    # ✅ IMPORTANTE: Usar socketio.emit() en lugar de emit() dentro de los callbacks
+    # porque se ejecutan en threads separados
+    
     @client.on(ConnectEvent)
     async def on_connect(event):
         print(f'✅ Conectado! Room ID: {event.room_id}')
-        emit('log', {'msg': f'✅ Conectado a @{username}', 'type': 'success'})
+        socketio.emit('log', {'msg': f'✅ Conectado a @{username}', 'type': 'success'})
     
     @client.on(CommentEvent)
     async def on_comment(event):
@@ -279,17 +282,17 @@ def handle_conectar(data):
             comentario = event.comment
             
             print(f'💬 {nickname}: {comentario}')
-            emit('log', {'msg': f'💬 {nickname}: {comentario}', 'type': 'info'})
+            socketio.emit('log', {'msg': f'💬 {nickname}: {comentario}', 'type': 'info'})
             
             permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
             if not permitido:
                 print(f'🚫 {razon}: {nickname}')
-                emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
+                socketio.emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
                 return
             
             texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
             
-            emit('chat', {
+            socketio.emit('chat', {
                 'nickname': nickname,
                 'comment': comentario,
                 'avatar': get_avatar_url(user),
@@ -312,7 +315,7 @@ def handle_conectar(data):
                 if debe_hablar:
                     nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
                     texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
-                    emit('tts', {'texto': texto_tts})
+                    socketio.emit('tts', {'texto': texto_tts})
                     print(f'🔊 TTS: {texto_tts[:50]}...')
         except Exception as e:
             print(f'❌ Error on_comment: {e}')
@@ -340,7 +343,7 @@ def handle_conectar(data):
                 ranking_likes[unique_id]['avatar'] = avatar
             
             print(f'❤️ {nickname} dio {likes} likes')
-            emit('like', {'nickname': nickname, 'likes': likes, 'avatar': avatar, 'uniqueId': unique_id})
+            socketio.emit('like', {'nickname': nickname, 'likes': likes, 'avatar': avatar, 'uniqueId': unique_id})
             enviar_ranking_actualizado()
         except Exception as e:
             print(f'❌ Error on_like: {e}')
@@ -368,9 +371,9 @@ def handle_conectar(data):
             
             if es_rosa and config_voz['soloQuiéreme']:
                 if donadores[unique_id]['rosas'] >= config_voz['cantidadQuiéremeMinima']:
-                    emit('tts', {'texto': f"{filtros_manager.limpiar_nombre_para_tts(nickname)} envió una rosa Quiéreme"})
+                    socketio.emit('tts', {'texto': f"{filtros_manager.limpiar_nombre_para_tts(nickname)} envió una rosa Quiéreme"})
             
-            emit('gift', {'nickname': nickname, 'gift': nombre_regalo, 'diamonds': diamantes, 'avatar': avatar, 'uniqueId': unique_id})
+            socketio.emit('gift', {'nickname': nickname, 'gift': nombre_regalo, 'diamonds': diamantes, 'avatar': avatar, 'uniqueId': unique_id})
         except Exception as e:
             print(f'❌ Error on_gift: {e}')
     
@@ -422,8 +425,8 @@ def enviar_ranking_actualizado():
                 cambios.append({'uniqueId': unique_id, 'nickname': usuario['nickname'], 'avatar': usuario['avatar'], 'posicionAnterior': pos_anterior, 'posicionActual': pos_actual, 'tipo': 'bajo'})
         posiciones_anteriores[unique_id] = pos_actual
     
-    if cambios: emit('cambio-posicion', cambios)
-    emit('ranking-actualizado', ranking_ordenado)
+    if cambios: socketio.emit('cambio-posicion', cambios)
+    socketio.emit('ranking-actualizado', ranking_ordenado)
 
 # ============ 8. FUNCIONES AUXILIARES ============
 def get_unique_id(user):
@@ -448,7 +451,6 @@ if __name__ == '__main__':
     print('🚀 Servidor Top Tap Tap con Eventlet (WebSockets)')
     print(f'📡 Puerto: {port}')
     
-    # ✅ Usar eventlet en lugar de waitress
     import eventlet
     import eventlet.wsgi
     eventlet.wsgi.server(eventlet.listen(('0.0.0.0', port)), app)
