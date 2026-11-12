@@ -2,6 +2,30 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+# ✅ Regex de emojis COMPLETA y moderna (cubre TODOS los rangos Unicode)
+EMOJI_PATTERN = (
+    "["
+    "\U0001F1E0-\U0001F1FF"   # Banderas / regional indicators
+    "\U0001F300-\U0001F5FF"   # Símbolos y pictogramas
+    "\U0001F600-\U0001F64F"   # Emoticones (caras)
+    "\U0001F680-\U0001F6FF"   # Transporte y mapas
+    "\U0001F700-\U0001F77F"   # Suplemento de símbolos
+    "\U0001F780-\U0001F7FF"   # Geométricos extendidos
+    "\U0001F800-\U0001F8FF"   # Suplemento de pictogramas
+    "\U0001F900-\U0001F9FF"   # Emojis nuevos (🥰 🤔 🧠)
+    "\U0001FA00-\U0001FAFF"   # Emojis muy nuevos (🫠 🫶)
+    "\U00002600-\U000027BF"   # Misceláneos + Dingbats (❤ ☀ ✅)
+    "\U00002B00-\U00002BFF"   # Símbolos varios
+    "\U0000FE00-\U0000FE0F"   # Variation selectors (️)
+    "\U0000200D"              # Zero-width joiner (👨‍👩‍👧)
+    "\U0001F3FB-\U0001F3FF"   # Tono de piel (👋🏽)
+    "\U00002190-\U000021FF"   # Flechas
+    "\U00002300-\U000023FF"   # Misc técnica
+    "]+",
+    flags=re.UNICODE
+)
+
+
 class FiltrosManager:
     def __init__(self):
         self.config = {
@@ -11,7 +35,7 @@ class FiltrosManager:
             'bloquearNumeros': False,
             'bloquearEnlaces': True,
             'bloquearSpam': True,
-            'banearAutomatico': False,  # ✅ Cambiado a False por defecto
+            'banearAutomatico': False,
             'tiempoBaneo': 300
         }
         
@@ -20,7 +44,7 @@ class FiltrosManager:
             'estupida', 'imbecil', 'cabron', 'cabrona', 'hijo de puta', 'verga',
             'culo', 'coño', 'carajo', 'joder', 'chingar', 'chingada', 'maricon',
             'maricona', 'bruto', 'bruta', 'tonto', 'tonta', 'pinche', 'naco', 'naca',
-            'wey', 'guey', 'güey'  # ✅ 'we' eliminado
+            'wey', 'guey', 'güey'
         ]
         
         self.historial_mensajes = defaultdict(list)
@@ -40,46 +64,30 @@ class FiltrosManager:
         return False
     
     def contiene_emojis(self, texto):
-        emoji_pattern = re.compile(
-            "["
-            "\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U000024C2-\U0001F251"
-            "]+",
-            flags=re.UNICODE
-        )
-        return bool(emoji_pattern.search(texto))
+        """✅ Detecta CUALQUIER emoji usando patrón completo"""
+        return bool(re.search(EMOJI_PATTERN, texto))
     
     def contiene_numeros(self, texto):
         return bool(re.search(r'\d', texto))
     
     def contiene_enlaces(self, texto):
-        url_pattern = re.compile(r'http[s]?://\S+')
+        url_pattern = re.compile(r'http[s]?://\S+|www\.\S+')
         return bool(url_pattern.search(texto))
     
     def es_spam(self, unique_id, texto):
-        """
-        Detecta spam comparando SOLO el contenido del mensaje (sin menciones)
-        """
         ahora = datetime.now()
         historial = self.historial_mensajes[unique_id]
         
-        # Limpiar mensajes antiguos (más de 60 segundos)
         self.historial_mensajes[unique_id] = [
             (msg, tiempo) for msg, tiempo in historial 
             if (ahora - tiempo).total_seconds() < 60
         ]
         
-        # Obtener mensajes recientes (últimos 10 segundos)
         mensajes_recientes = [
             msg for msg, tiempo in self.historial_mensajes[unique_id]
             if (ahora - tiempo).total_seconds() < 10
         ]
         
-        # ✅ NORMALIZAR el texto: quitar menciones (@usuario) y emojis para comparar
         texto_normalizado = self.normalizar_para_comparar(texto)
         
         for msg in mensajes_recientes:
@@ -91,40 +99,10 @@ class FiltrosManager:
         return False
     
     def normalizar_para_comparar(self, texto):
-        """
-        Normaliza el texto para comparación de spam:
-        - Elimina menciones (@usuario)
-        - Elimina emojis
-        - Convierte a minúsculas
-        - Elimina espacios extras
-        """
-        # Eliminar menciones (@usuario con o sin emojis)
         texto = re.sub(r'@[^\s]+', '', texto)
-        
-        # Eliminar emojis
-        texto = re.sub(
-            "["
-            "\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U000024C2-\U0001F251"
-            "\U0001F900-\U0001F9FF"
-            "\U0001FA00-\U0001FA6F"
-            "\U0001F3FB-\U0001F3FF"
-            "\u200D"
-            "\uFE0F"
-            "]+",
-            "",
-            texto,
-            flags=re.UNICODE
-        )
-        
-        # Convertir a minúsculas y limpiar espacios
+        texto = re.sub(EMOJI_PATTERN, '', texto)
         texto = texto.lower().strip()
         texto = re.sub(r'\s+', ' ', texto)
-        
         return texto
     
     def esta_baneado(self, unique_id):
@@ -141,9 +119,6 @@ class FiltrosManager:
         self.usuarios_baneados[unique_id] = tiempo_baneo
     
     def filtrar_mensaje(self, unique_id, nickname, texto):
-        """
-        Aplica filtros SOLO al contenido del mensaje, NO al nickname
-        """
         if self.esta_baneado(unique_id):
             return False, "Usuario baneado temporalmente"
         
@@ -162,24 +137,15 @@ class FiltrosManager:
                 return False, f"Grosería detectada - {nickname} baneado"
             return False, "Contiene groserías"
         
-        # Filtrar emojis (SOLO si el mensaje es 100% emojis)
+        # ✅ FILTRO DE EMOJIS CORREGIDO:
+        # Ahora bloquea CUALQUIER mensaje que contenga emojis
+        # (antes solo bloqueaba si eran 100% emojis)
         if self.config['bloquearEmojis'] and self.contiene_emojis(mensaje_limpio):
-            sin_emojis = re.sub(
-                "["
-                "\U0001F600-\U0001F64F"
-                "\U0001F300-\U0001F5FF"
-                "\U0001F680-\U0001F6FF"
-                "\U0001F1E0-\U0001F1FF"
-                "\U00002702-\U000027B0"
-                "\U000024C2-\U0001F251"
-                "]+",
-                "",
-                mensaje_limpio,
-                flags=re.UNICODE
-            ).strip()
-            
-            if not sin_emojis:
-                return False, "Solo emojis"
+            return False, "Contiene emojis"
+        
+        # Filtrar números
+        if self.config['bloquearNumeros'] and self.contiene_numeros(mensaje_limpio):
+            return False, "Contiene números"
         
         # Filtrar enlaces
         if self.config['bloquearEnlaces'] and self.contiene_enlaces(mensaje_limpio):
@@ -198,23 +164,23 @@ class FiltrosManager:
         return True, ""
     
     def limpiar_texto_para_tts(self, texto):
-        """Limpia el texto para TTS"""
-        texto = re.sub(
-            "["
-            "\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U000024C2-\U0001F251"
-            "]+",
-            "",
-            texto,
-            flags=re.UNICODE
-        )
+        """
+        ✅ Limpia el texto para que el TTS NUNCA lea emojis,
+        aunque el filtro de emojis esté DESACTIVADO.
+        """
+        # 1. Quitar todos los emojis (patrón completo)
+        texto = re.sub(EMOJI_PATTERN, '', texto)
         
-        texto = re.sub(r'http[s]?://\S+', '', texto)
-        texto = re.sub(r'[^\w\s.,!?¿¡-]', '', texto)
+        # 2. Quitar enlaces
+        texto = re.sub(r'http[s]?://\S+|www\.\S+', '', texto)
+        
+        # 3. Quitar menciones (@usuario)
+        texto = re.sub(r'@[^\s]+', '', texto)
+        
+        # 4. Red de seguridad: eliminar cualquier carácter raro que quedó
+        texto = re.sub(r'[^\w\s.,!?¿¡:;áéíóúÁÉÍÓÚñÑüÜ]', '', texto)
+        
+        # 5. Limpiar espacios extra
         texto = re.sub(r'\s+', ' ', texto).strip()
         
         return texto
@@ -222,27 +188,8 @@ class FiltrosManager:
     def limpiar_nombre_para_tts(self, nombre):
         """
         Limpia SOLO el nombre del usuario para TTS.
-        Elimina emojis y caracteres especiales, dejando solo letras.
         """
-        nombre_limpio = re.sub(
-            "["
-            "\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U000024C2-\U0001F251"
-            "\U0001F900-\U0001F9FF"
-            "\U0001FA00-\U0001FA6F"
-            "\U0001F3FB-\U0001F3FF"
-            "\u200D"
-            "\uFE0F"
-            "]+",
-            "",
-            nombre,
-            flags=re.UNICODE
-        )
-        
+        nombre_limpio = re.sub(EMOJI_PATTERN, '', nombre)
         nombre_limpio = re.sub(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]', '', nombre_limpio)
         nombre_limpio = re.sub(r'\s+', ' ', nombre_limpio).strip()
         
