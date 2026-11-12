@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Tap Tap - TikTok Live Gamification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #333;
+            padding: 20px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .navbar .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ff0066;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .navbar .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .navbar .nav-links a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .navbar .nav-links a:hover {
+            color: #ff0066;
+        }
+
+        .navbar .auth-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff0066, #ff4444);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #ff0066;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 0, 102, 0.1);
+        }
+
+        /* HERO SECTION */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 100px 20px 50px;
+            background: radial-gradient(circle at center, rgba(255, 0, 102, 0.1) 0%, transparent 70%);
+        }
+
+        .hero-content {
+            max-width: 900px;
+        }
+
+        .hero h1 {
+            font-size: 4em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ff0066, #ff4444, #ff0066);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient 3s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .hero p {
+            font-size: 1.5em;
+            color: #888;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .hero .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero .btn {
+            padding: 18px 40px;
+            font-size: 18px;
+        }
+
+        /* FEATURES SECTION */
+        .features {
+            padding: 100px 50px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 60px;
+            color: #ff0066;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            border-color: #ff0066;
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(255, 0, 102, 0.2);
+        }
+
+        .feature-card .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #ff0066;
+        }
+
+        .feature-card p {
+            color: #888;
+            line-height: 1.6;
+        }
+
+        /* STATS SECTION */
+        .stats {
+            background: #1a1a1a;
+            padding: 80px 50px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stat-item h3 {
+            font-size: 3em;
+            color: #ff0066;
+            margin-bottom: 10px;
+        }
+
+        .stat-item p {
+            color: #888;
+            font-size: 1.2em;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #0a0a0a;
+            border-top: 1px solid #333;
+            padding: 40px 50px;
+            text-align: center;
+            color: #888;
+        }
+
+        .footer p {
+            margin-bottom: 10px;
+        }
+
+        .footer .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .footer .social-links a {
+            color: #888;
+            font-size: 1.5em;
+            transition: all 0.3s;
+        }
+
+        .footer .social-links a:hover {
+            color: #ff0066;
+        }
+    </style>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">🏆 TOP TAP TAP</div>
+        <div class="nav-links">
+            <a href="#features">Características</a>
+            <a href="#stats">Estadísticas</a>
+            <a href="#contact">Contacto</a>
+        </div>
+        <div class="auth-buttons">
+            <a href="/login" class="btn btn-secondary">Iniciar Sesión</a>
+            <a href="/register" class="btn btn-primary">Registrarse</a>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Top Tap Tap</h1>
+            <p>La plataforma definitiva para gamificar tu TikTok Live. Conecta, compite y premia a tus espectadores más activos con rankings en tiempo real, chat de voz IA y overlays profesionales.</p>
+            <div class="cta-buttons">
+                <a href="/register" class="btn btn-primary">🚀 Comenzar Gratis</a>
+                <a href="#features" class="btn btn-secondary">Ver Características</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section class="features" id="features">
+        <h2>Características Principales</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="icon">🎮</div>
+                <h3>Pelotas Rebotando</h3>
+                <p>Top 3 con fotos reales rebotando en tiempo real. Animación épica con explosiones cuando cambian de posición.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">👑</div>
+                <h3>Corona al #1</h3>
+                <p>El líder del ranking tiene una corona dorada animada que se mueve sobre su avatar.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🏆</div>
+                <h3>Ranking Top 6</h3>
+                <p>Lista de los 6 usuarios más activos con avatares, nombres y cantidad de taps en tiempo real.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🎙️</div>
+                <h3>Chat de Voz IA</h3>
+                <p>Lee los comentarios en voz alta con voces en español. Opción de voz masculina, femenina o variada.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🛡️</div>
+                <h3>Filtros Inteligentes</h3>
+                <p>Anti-spam, anti-groserías, bloqueo de enlaces y emojis. Mantén tu chat limpio y seguro.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🎨</div>
+                <h3>Fondo Transparente</h3>
+                <p>Overlays con fondo verde para chroma key. Perfecto para OBS Studio y TikTok Studio.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- STATS SECTION -->
+    <section class="stats" id="stats">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>10K+</h3>
+                <p>Usuarios Activos</p>
+            </div>
+            <div class="stat-item">
+                <h3>50K+</h3>
+                <p>Lives Realizados</p>
+            </div>
+            <div class="stat-item">
+                <h3>1M+</h3>
+                <p>Mensajes Leídos</p>
+            </div>
+            <div class="stat-item">
+                <h3>99%</h3>
+                <p>Satisfacción</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer" id="contact">
+        <p>© 2026 Top Tap Tap. Todos los derechos reservados.</p>
+        <p>Hecho con ❤️ para creadores de TikTok Live</p>
+        <div class="social-links">
+            <a href="#">📧</a>
+            <a href="#">📱</a>
+            <a href="#">💬</a>
+        </div>
+    </footer>
+</body>
+</html>
