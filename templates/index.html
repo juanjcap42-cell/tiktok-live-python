@@ -342,6 +342,58 @@
             color: #fff;
         }
 
+        .voice-type-selector {
+            margin-top: 20px;
+            padding: 20px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+
+        .voice-type-selector h4 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .voice-type-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .voice-type-btn {
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .voice-type-btn:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .voice-type-btn.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .voice-type-btn .icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+
+        .voice-type-btn .label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
         .tts-info {
             background: rgba(0, 170, 255, 0.1);
             border-left: 4px solid #00aaff;
@@ -349,6 +401,7 @@
             border-radius: 5px;
             font-size: 13px;
             color: #00aaff;
+            margin-top: 15px;
         }
 
         .tts-queue-info {
@@ -656,6 +709,26 @@
                         <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
                     </div>
                 </div>
+
+                <!-- SELECTOR DE TIPO DE VOZ -->
+                <div class="voice-type-selector">
+                    <h4>🎭 Tipo de Voz</h4>
+                    <div class="voice-type-options">
+                        <div class="voice-type-btn active" data-type="masculina" onclick="seleccionarTipoVoz('masculina')">
+                            <div class="icon">👨</div>
+                            <div class="label">Masculina</div>
+                        </div>
+                        <div class="voice-type-btn" data-type="femenina" onclick="seleccionarTipoVoz('femenina')">
+                            <div class="icon">👩</div>
+                            <div class="label">Femenina</div>
+                        </div>
+                        <div class="voice-type-btn" data-type="variada" onclick="seleccionarTipoVoz('variada')">
+                            <div class="icon">🎭</div>
+                            <div class="label">Variada</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="tts-info">
                     💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
                 </div>
@@ -828,20 +901,95 @@
             if (btn) btn.classList.add('active');
         }
 
-        // ============ COLA DE TTS (SOLUCIÓN AL PROBLEMA DE SALTOS) ============
+        // ============ COLA DE TTS ============
         let colaTTS = [];
         let reproduciendo = false;
         let vocesDisponibles = [];
+        let tipoVozActual = 'masculina'; // masculina, femenina, variada
+        let vozMasculina = null;
+        let vozFemenina = null;
+        let usarVozFemenina = false; // Para alternar en modo variado
 
         // Cargar voces disponibles
         function cargarVoces() {
             vocesDisponibles = window.speechSynthesis.getVoices();
             console.log('🎤 Voces disponibles:', vocesDisponibles.length);
+            
+            // Clasificar voces en español por género
+            const vocesEspanol = vocesDisponibles.filter(v => v.lang.startsWith('es'));
+            console.log('🎤 Voces en español:', vocesEspanol.length);
+            
+            vocesEspanol.forEach((voz, index) => {
+                console.log(`  ${index}: ${voz.name} (${voz.lang})`);
+            });
+            
+            // Intentar detectar voz masculina y femenina
+            // Estrategia: buscar nombres comunes de voces
+            vozMasculina = vocesEspanol.find(v => 
+                v.name.toLowerCase().includes('male') || 
+                v.name.toLowerCase().includes('hombre') ||
+                v.name.toLowerCase().includes('jorge') ||
+                v.name.toLowerCase().includes('carlos') ||
+                v.name.toLowerCase().includes('diego') ||
+                v.name.toLowerCase().includes('pablo') ||
+                v.name.toLowerCase().includes('juan') ||
+                v.lang === 'es-MX'
+            );
+            
+            vozFemenina = vocesEspanol.find(v => 
+                v.name.toLowerCase().includes('female') || 
+                v.name.toLowerCase().includes('mujer') ||
+                v.name.toLowerCase().includes('maria') ||
+                v.name.toLowerCase().includes('laura') ||
+                v.name.toLowerCase().includes('helena') ||
+                v.name.toLowerCase().includes('paulina') ||
+                v.name.toLowerCase().includes('monica') ||
+                v.lang === 'es-ES'
+            );
+            
+            // Si no se encontraron, usar la primera voz en español
+            if (!vozMasculina && vocesEspanol.length > 0) {
+                vozMasculina = vocesEspanol[0];
+            }
+            if (!vozFemenina && vocesEspanol.length > 1) {
+                vozFemenina = vocesEspanol[1];
+            }
+            
+            console.log('👨 Voz masculina:', vozMasculina ? vozMasculina.name : 'No encontrada');
+            console.log('👩 Voz femenina:', vozFemenina ? vozFemenina.name : 'No encontrada');
         }
 
         cargarVoces();
         if (window.speechSynthesis.onvoiceschanged !== undefined) {
             window.speechSynthesis.onvoiceschanged = cargarVoces;
+        }
+
+        // Seleccionar tipo de voz
+        function seleccionarTipoVoz(tipo) {
+            tipoVozActual = tipo;
+            
+            // Actualizar UI
+            document.querySelectorAll('.voice-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${tipo}"]`).classList.add('active');
+            
+            console.log(`🎭 Tipo de voz seleccionado: ${tipo}`);
+            agregarLog(`🎭 Tipo de voz: ${tipo}`, 'info');
+        }
+
+        // Obtener voz según el tipo seleccionado
+        function obtenerVoz() {
+            if (tipoVozActual === 'masculina') {
+                return vozMasculina;
+            } else if (tipoVozActual === 'femenina') {
+                return vozFemenina;
+            } else if (tipoVozActual === 'variada') {
+                // Alternar entre masculina y femenina
+                usarVozFemenina = !usarVozFemenina;
+                return usarVozFemenina ? vozFemenina : vozMasculina;
+            }
+            return vozMasculina;
         }
 
         // Función para procesar la cola de TTS
@@ -861,15 +1009,8 @@
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
             
-            // Buscar voz en español
-            let vozSeleccionada = vocesDisponibles.find(v => 
-                v.lang === 'es-MX' || v.name.toLowerCase().includes('mexico')
-            );
-            
-            if (!vozSeleccionada) {
-                vozSeleccionada = vocesDisponibles.find(v => v.lang.startsWith('es'));
-            }
-            
+            // Obtener voz según el tipo seleccionado
+            const vozSeleccionada = obtenerVoz();
             if (vozSeleccionada) {
                 utterance.voice = vozSeleccionada;
             }
@@ -877,12 +1018,12 @@
             // Cuando termine de leer este mensaje, procesa el siguiente
             utterance.onend = () => {
                 console.log('✅ Terminó:', mensaje);
-                procesarColaTTS(); // ← Aquí está la magia: procesa el siguiente
+                procesarColaTTS();
             };
             
             utterance.onerror = (event) => {
                 console.error('❌ Error:', event.error);
-                procesarColaTTS(); // Continúa con el siguiente aunque haya error
+                procesarColaTTS();
             };
             
             window.speechSynthesis.speak(utterance);
@@ -894,7 +1035,6 @@
             colaTTS.push(texto);
             console.log(`📥 Mensaje agregado a cola (total: ${colaTTS.length})`);
             
-            // Si no está reproduciendo, empieza
             if (!reproduciendo) {
                 procesarColaTTS();
             }
@@ -902,16 +1042,17 @@
             actualizarInfoCola();
         }
 
-        // Actualizar información de la cola en pantalla
         function actualizarInfoCola() {
             const info = document.getElementById('ttsQueueInfo');
             if (info) {
                 const estado = reproduciendo ? '🔊 Leyendo...' : '⏸️ En pausa';
-                info.textContent = `📋 Cola de lectura: ${colaTTS.length} mensajes pendientes | ${estado}`;
+                const tipoVoz = tipoVozActual === 'variada' ? 
+                    (usarVozFemenina ? '👩 Femenina' : '👨 Masculina') : 
+                    (tipoVozActual === 'femenina' ? '👩 Femenina' : '👨 Masculina');
+                info.textContent = `📋 Cola: ${colaTTS.length} mensajes | ${estado} | Voz: ${tipoVoz}`;
             }
         }
 
-        // Limpiar la cola
         function limpiarCola() {
             colaTTS = [];
             window.speechSynthesis.cancel();
@@ -920,27 +1061,19 @@
             agregarLog('🗑️ Cola de voz limpiada', 'info');
         }
 
-        // Probar voz
         function probarVoz() {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 colaTTS = [];
                 reproduciendo = false;
                 
-                const utterance = new SpeechSynthesisUtterance('Hola, esta es una prueba de voz del chat de voz de Top Tap Tap. Los mensajes se leerán en orden sin cortarse.');
+                const utterance = new SpeechSynthesisUtterance('Hola, esta es una prueba de voz del chat de voz de Top Tap Tap');
                 utterance.lang = 'es-MX';
                 utterance.rate = 1.0;
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
                 
-                let vozSeleccionada = vocesDisponibles.find(v => 
-                    v.lang === 'es-MX' || v.name.toLowerCase().includes('mexico')
-                );
-                
-                if (!vozSeleccionada) {
-                    vozSeleccionada = vocesDisponibles.find(v => v.lang.startsWith('es'));
-                }
-                
+                const vozSeleccionada = obtenerVoz();
                 if (vozSeleccionada) {
                     utterance.voice = vozSeleccionada;
                     console.log(`🔊 Probando voz: ${vozSeleccionada.name} (${vozSeleccionada.lang})`);
@@ -980,10 +1113,8 @@
             agregarLog2(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
         });
 
-        // ✅ CHAT DE VOZ CON COLA (NO SE CORTAN LOS MENSAJES)
         socket.on('tts', (data) => {
             if ('speechSynthesis' in window) {
-                // En lugar de cancelar, agregamos a la cola
                 agregarAColaTTS(data.texto);
                 console.log('📥 Agregado a cola:', data.texto);
             } else {
@@ -1019,7 +1150,6 @@
             document.getElementById('statusDot').classList.remove('connected');
             document.getElementById('statusText').textContent = 'Desconectado';
             
-            // Limpiar cola al desconectar
             limpiarCola();
             
             agregarLog('📴 Desconectado', 'info');
