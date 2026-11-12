@@ -5,104 +5,434 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top Tap Tap - Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             background: #0a0a0a;
-            color: #00ff88;
-            font-family: 'Segoe UI', sans-serif;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
-            padding: 20px;
+            display: flex;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* SIDEBAR IZQUIERDO */
+        .sidebar {
+            width: 250px;
+            background: #1a1a1a;
+            border-right: 2px solid #333;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
         }
 
-        h1 {
-            text-align: center;
-            color: #ff0066;
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
-        }
-
-        .panel {
-            background: rgba(0, 255, 136, 0.05);
-            border: 2px solid rgba(0, 255, 136, 0.3);
-            border-radius: 15px;
-            padding: 25px;
+        .sidebar-logo {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #333;
             margin-bottom: 20px;
         }
 
-        .panel h2 {
+        .sidebar-logo h1 {
+            color: #ff0066;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu button {
+            width: 100%;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: #ccc;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .sidebar-menu button:hover {
+            background: rgba(255, 0, 102, 0.1);
+            color: #fff;
+        }
+
+        .sidebar-menu button.active {
+            background: rgba(255, 0, 102, 0.2);
+            color: #ff0066;
+            border-left-color: #ff0066;
+            font-weight: bold;
+        }
+
+        .sidebar-menu button .icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid #333;
+        }
+
+        .sidebar-footer button {
+            width: 100%;
+            padding: 12px;
+            background: #333;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-footer button:hover {
+            background: #ff0066;
+        }
+
+        /* CONTENIDO PRINCIPAL */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* HEADER DE SECCIÓN */
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .section-header h2 {
+            color: #ff0066;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .section-header p {
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        /* PANEL DE CONEXIÓN */
+        .connection-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .connection-panel h3 {
             color: #00ff88;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .input-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         input[type="text"] {
             flex: 1;
-            padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid #00ff88;
-            border-radius: 8px;
+            padding: 15px 20px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
             color: #fff;
             font-size: 16px;
             outline: none;
+            transition: all 0.3s;
         }
 
         input[type="text"]:focus {
-            border-color: #00ffcc;
-            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
         }
 
-        button {
-            padding: 12px 25px;
-            background: #00ff88;
-            color: #000;
+        .btn-connect {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #ff0066, #ff4444);
+            color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        button:hover {
-            background: #00ffcc;
+        .btn-connect:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+            box-shadow: 0 5px 20px rgba(255, 0, 102, 0.5);
         }
 
-        button:disabled {
+        .btn-disconnect {
+            padding: 15px 30px;
             background: #555;
-            color: #888;
-            cursor: not-allowed;
-            transform: none;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .btn-danger {
+        .btn-disconnect:hover {
             background: #ff4444;
+        }
+
+        .btn-disconnect:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        /* FEATURES GRID */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        .feature-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            border-color: #ff0066;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 0, 102, 0.2);
+        }
+
+        .feature-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h4 {
+            color: #ff0066;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature-card p {
+            color: #888;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        /* SECCIÓN CHAT DE VOZ */
+        .voice-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto 30px;
+        }
+
+        .voice-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .voice-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .voice-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .voice-option:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .voice-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #00ff88;
+        }
+
+        .voice-option label {
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
             color: #fff;
         }
 
-        .btn-danger:hover {
-            background: #ff6666;
-            box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+        .tts-info {
+            background: rgba(0, 170, 255, 0.1);
+            border-left: 4px solid #00aaff;
+            padding: 12px 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #00aaff;
+        }
+
+        /* SECCIÓN FILTROS */
+        .filters-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .filters-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-item:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .filter-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #00ff88;
+        }
+
+        .filter-item label {
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+            color: #fff;
+        }
+
+        /* LOG DE ACTIVIDAD */
+        .log-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 30px auto;
+        }
+
+        .log-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
         }
 
         .log-container {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(0, 255, 136, 0.3);
-            border-radius: 15px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
             padding: 20px;
             max-height: 400px;
             overflow-y: auto;
@@ -116,6 +446,7 @@
             background: rgba(0, 255, 136, 0.05);
             font-family: 'Courier New', monospace;
             font-size: 14px;
+            color: #fff;
         }
 
         .log-entry.error {
@@ -134,239 +465,395 @@
             background: rgba(0, 170, 255, 0.05);
         }
 
-        .status {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-left: 10px;
-        }
-
-        .status.connected {
-            background: #00ff88;
-            color: #000;
-        }
-
-        .status.disconnected {
-            background: #ff4444;
-            color: #fff;
-        }
-
-        .links {
+        /* SECCIÓN OVERLAY */
+        .overlay-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
             text-align: center;
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
         }
 
-        .links a {
+        .overlay-panel h3 {
             color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .overlay-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .overlay-link {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
             text-decoration: none;
-            font-size: 18px;
-            padding: 12px 25px;
-            background: rgba(0, 255, 136, 0.1);
-            border: 2px solid #00ff88;
-            border-radius: 10px;
+            color: #fff;
             transition: all 0.3s;
         }
 
-        .links a:hover {
-            background: #00ff88;
-            color: #000;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        .overlay-link:hover {
+            border-color: #ff0066;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 0, 102, 0.2);
         }
 
-        .filter-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
+        .overlay-link .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .overlay-link h4 {
+            color: #ff0066;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .overlay-link p {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .overlay-link .url {
             margin-top: 15px;
-        }
-
-        .filter-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            background: #1a1a1a;
             border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .filter-item:hover {
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        .filter-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .filter-item label {
-            cursor: pointer;
-            font-size: 14px;
-            flex: 1;
-        }
-
-        .voz-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .voz-option {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-        }
-
-        .voz-option input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-        }
-
-        .voz-option label {
-            font-size: 14px;
-            flex: 1;
-        }
-
-        .tts-status {
-            margin-top: 10px;
-            padding: 8px 12px;
-            background: rgba(0, 170, 255, 0.1);
-            border-left: 4px solid #00aaff;
-            border-radius: 5px;
-            font-size: 13px;
-            color: #00aaff;
+            font-size: 0.85em;
+            color: #00ff88;
+            word-break: break-all;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🏆 TOP TAP TAP</h1>
-
-        <div class="panel">
-            <h2>📡 Conexión a TikTok Live</h2>
-            <div class="input-group">
-                <input type="text" id="username" placeholder="@usuario_de_tiktok" />
-                <button id="btnConectar" onclick="conectar()">⚡ CONECTAR</button>
-                <button id="btnDesconectar" class="btn-danger" onclick="desconectar()" disabled>🔴 DESCONECTAR</button>
-            </div>
-            <div>
-                Estado: <span id="estado" class="status disconnected">Desconectado</span>
-            </div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h1>🏆 TOP TAP TAP</h1>
         </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <button class="nav-btn active" data-section="inicio">
+                    <span class="icon">🏠</span>
+                    Inicio
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="chatvoz">
+                    <span class="icon">🎙️</span>
+                    Chat de Voz
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="overlay">
+                    <span class="icon">🖼️</span>
+                    Overlay
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="config">
+                    <span class="icon">⚙️</span>
+                    Configuración
+                </button>
+            </li>
+        </ul>
 
-        <div class="panel">
-            <h2>🎙️ Chat de Voz</h2>
-            <div class="voz-options">
-                <div class="voz-option">
-                    <input type="checkbox" id="vozActivada" onchange="actualizarConfigVoz()">
-                    <label for="vozActivada">Activar chat de voz</label>
+        <div class="sidebar-footer">
+            <button onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+        
+        <!-- SECCIÓN INICIO -->
+        <section id="inicio" class="section active">
+            <div class="section-header">
+                <h2>🏆 TOP TAP TAP</h2>
+                <p>Conecta tu TikTok Live y haz que tus espectadores compitan por el Top 1</p>
+            </div>
+
+            <div class="connection-panel">
+                <h3>📡 Conexión a TikTok Live</h3>
+                <div class="input-group">
+                    <input type="text" id="username" placeholder="@usuario_de_tiktok" />
+                    <button class="btn-connect" id="btnConectar" onclick="conectar()">
+                        ⚡ CONECTAR
+                    </button>
+                    <button class="btn-disconnect" id="btnDesconectar" onclick="desconectar()" disabled>
+                        🔴 DESCONECTAR
+                    </button>
                 </div>
-                <div class="voz-option">
-                    <input type="checkbox" id="soloSeguidores" onchange="actualizarConfigVoz()">
-                    <label for="soloSeguidores">Solo seguidores</label>
-                </div>
-                <div class="voz-option">
-                    <input type="checkbox" id="soloDonadores" onchange="actualizarConfigVoz()">
-                    <label for="soloDonadores">Solo donadores</label>
-                </div>
-                <div class="voz-option">
-                    <input type="checkbox" id="soloQuiéreme" onchange="actualizarConfigVoz()">
-                    <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Desconectado</span>
                 </div>
             </div>
-            <div class="tts-status" id="ttsStatus">
-                💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
-            </div>
-        </div>
 
-        <div class="panel">
-            <h2>🛡️ Filtros de Mensajes</h2>
-            <div class="filter-group">
-                <div class="filter-item">
-                    <input type="checkbox" id="filtroActivado" checked onchange="actualizarFiltros()">
-                    <label for="filtroActivado">Activar filtros</label>
+            <div class="features-grid">
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">🎮</div>
+                    <h4>Pelotas Rebotando</h4>
+                    <p>Top 3 con fotos reales rebotando</p>
                 </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="bloquearGroserias" checked onchange="actualizarFiltros()">
-                    <label for="bloquearGroserias">Bloquear groserías</label>
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">👑</div>
+                    <h4>Corona al #1</h4>
+                    <p>El líder tiene corona dorada</p>
                 </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="bloquearEmojis" onchange="actualizarFiltros()">
-                    <label for="bloquearEmojis">Bloquear emojis</label>
+                <div class="feature-card" onclick="navegarA('overlay')">
+                    <div class="icon">🏆</div>
+                    <h4>Ranking Top 6</h4>
+                    <p>Lista de los más activos</p>
                 </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="bloquearNumeros" onchange="actualizarFiltros()">
-                    <label for="bloquearNumeros">Bloquear números</label>
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">🎙️</div>
+                    <h4>Chat de Voz IA</h4>
+                    <p>Lee comentarios en voz alta</p>
                 </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="bloquearEnlaces" checked onchange="actualizarFiltros()">
-                    <label for="bloquearEnlaces">Bloquear enlaces</label>
+                <div class="feature-card" onclick="navegarA('config')">
+                    <div class="icon">🛡️</div>
+                    <h4>Filtros Inteligentes</h4>
+                    <p>Anti-spam y anti-groserías</p>
                 </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="bloquearSpam" checked onchange="actualizarFiltros()">
-                    <label for="bloquearSpam">Bloquear spam (mensajes repetidos)</label>
-                </div>
-                <div class="filter-item">
-                    <input type="checkbox" id="banearAutomatico" onchange="actualizarFiltros()">
-                    <label for="banearAutomatico">Baneo automático de 5 minutos</label>
+                <div class="feature-card" onclick="navegarA('overlay')">
+                    <div class="icon">🎨</div>
+                    <h4>Fondo Transparente</h4>
+                    <p>Perfecto para OBS/TikTok</p>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="panel">
-            <h2>📋 Registro de Actividad</h2>
-            <div class="log-container" id="logContainer">
-                <div class="log-entry info">Esperando conexión...</div>
+        <!-- SECCIÓN CHAT DE VOZ -->
+        <section id="chatvoz" class="section">
+            <div class="section-header">
+                <h2>🎙️ Chat de Voz</h2>
+                <p>Configura cómo se leen los mensajes en voz alta</p>
             </div>
-        </div>
 
-        <div class="links">
-            <a href="/overlay" target="_blank">🖼️ Abrir Overlay</a>
-            <a href="/ranking" target="_blank">🏆 Abrir Ranking Animado</a>
-        </div>
-    </div>
+            <div class="voice-panel">
+                <h3>🔊 Opciones de Voz</h3>
+                <div class="voice-options">
+                    <div class="voice-option">
+                        <input type="checkbox" id="vozActivada" onchange="actualizarConfigVoz()">
+                        <label for="vozActivada">Activar chat de voz</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloSeguidores" onchange="actualizarConfigVoz()">
+                        <label for="soloSeguidores">Solo seguidores</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloDonadores" onchange="actualizarConfigVoz()">
+                        <label for="soloDonadores">Solo donadores</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloQuiéreme" onchange="actualizarConfigVoz()">
+                        <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
+                    </div>
+                </div>
+                <div class="tts-info">
+                    💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
+                </div>
+            </div>
+
+            <div class="filters-panel">
+                <h3>🛡️ Filtros de Mensajes</h3>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filtroActivado" checked onchange="actualizarFiltros()">
+                        <label for="filtroActivado">Activar filtros</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearGroserias" checked onchange="actualizarFiltros()">
+                        <label for="bloquearGroserias">Bloquear groserías</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEmojis" onchange="actualizarFiltros()">
+                        <label for="bloquearEmojis">Bloquear emojis</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearNumeros" onchange="actualizarFiltros()">
+                        <label for="bloquearNumeros">Bloquear números</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEnlaces" checked onchange="actualizarFiltros()">
+                        <label for="bloquearEnlaces">Bloquear enlaces</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearSpam" checked onchange="actualizarFiltros()">
+                        <label for="bloquearSpam">Bloquear spam (mensajes repetidos)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="banearAutomatico" onchange="actualizarFiltros()">
+                        <label for="banearAutomatico">Baneo automático de 5 minutos</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>📋 Registro de Actividad</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry info">Esperando conexión...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN OVERLAY -->
+        <section id="overlay" class="section">
+            <div class="section-header">
+                <h2>🖼️ Overlay</h2>
+                <p>Agrega estas URLs como fuente de navegador en OBS o TikTok Studio</p>
+            </div>
+
+            <div class="overlay-panel">
+                <h3>📺 Fuentes para tu transmisión</h3>
+                <p style="color: #888; margin-bottom: 20px;">
+                    Copia estas URLs y agrégalas como "Fuente de Navegador" en OBS Studio o TikTok Studio
+                </p>
+
+                <div class="overlay-links">
+                    <a href="/overlay" target="_blank" class="overlay-link">
+                        <div class="icon">🖼️</div>
+                        <h4>Overlay Principal</h4>
+                        <p>Ranking de taps + Pelotas rebotando</p>
+                        <div class="url" id="urlOverlay">/overlay</div>
+                    </a>
+
+                    <a href="/ranking" target="_blank" class="overlay-link">
+                        <div class="icon">🏆</div>
+                        <h4>Ranking Animado</h4>
+                        <p>Solo pelotas rebotando (fondo verde)</p>
+                        <div class="url" id="urlRanking">/ranking</div>
+                    </a>
+                </div>
+
+                <div style="margin-top: 40px; padding: 20px; background: #0a0a0a; border-radius: 10px; text-align: left;">
+                    <h4 style="color: #ff0066; margin-bottom: 15px;">📋 Instrucciones para TikTok Studio:</h4>
+                    <ol style="color: #888; line-height: 2; padding-left: 20px;">
+                        <li>Haz clic en <strong style="color: #fff;">"+ Añadir fuente"</strong></li>
+                        <li>Selecciona <strong style="color: #fff;">"Enlace"</strong></li>
+                        <li>Pega la URL del overlay</li>
+                        <li>Configura: <strong style="color: #fff;">Ancho: 1920, Alto: 1080</strong></li>
+                        <li>Haz clic en <strong style="color: #fff;">"Añadir fuente"</strong></li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN CONFIGURACIÓN -->
+        <section id="config" class="section">
+            <div class="section-header">
+                <h2>⚙️ Configuración</h2>
+                <p>Ajustes adicionales del sistema</p>
+            </div>
+
+            <div class="filters-panel">
+                <h3>🛡️ Filtros de Mensajes</h3>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filtroActivado2" checked onchange="actualizarFiltros()">
+                        <label for="filtroActivado2">Activar filtros</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearGroserias2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearGroserias2">Bloquear groserías</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEmojis2" onchange="actualizarFiltros()">
+                        <label for="bloquearEmojis2">Bloquear emojis</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearNumeros2" onchange="actualizarFiltros()">
+                        <label for="bloquearNumeros2">Bloquear números</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEnlaces2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearEnlaces2">Bloquear enlaces</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearSpam2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearSpam2">Bloquear spam (mensajes repetidos)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="banearAutomatico2" onchange="actualizarFiltros()">
+                        <label for="banearAutomatico2">Baneo automático de 5 minutos</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>📋 Registro de Actividad</h3>
+                <div class="log-container" id="logContainer2">
+                    <div class="log-entry info">Sistema iniciado</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script>
         const socket = io();
 
+        // Navegación entre secciones
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const section = btn.dataset.section;
+                navegarA(section);
+            });
+        });
+
+        function navegarA(sectionId) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            // Mostrar la sección seleccionada
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Activar el botón correspondiente
+            const btn = document.querySelector(`[data-section="${sectionId}"]`);
+            if (btn) btn.classList.add('active');
+        }
+
+        // Socket.IO events
         socket.on('connect', () => {
             console.log('✅ Conectado al servidor');
+            agregarLog('✅ Conectado al servidor', 'success');
+            agregarLog2('✅ Conectado al servidor', 'success');
         });
 
         socket.on('log', (data) => {
             agregarLog(data.msg, data.type || 'info');
+            agregarLog2(data.msg, data.type || 'info');
         });
 
         socket.on('chat', (data) => {
             agregarLog(`💬 ${data.nickname}: ${data.comment}`, 'success');
+            agregarLog2(`💬 ${data.nickname}: ${data.comment}`, 'success');
         });
 
         socket.on('like', (data) => {
             agregarLog(`❤️ ${data.nickname} dio ${data.likes} taps`, 'success');
+            agregarLog2(`❤️ ${data.nickname} dio ${data.likes} taps`, 'success');
         });
 
         socket.on('gift', (data) => {
             agregarLog(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
+            agregarLog2(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
         });
 
-        // ✅ CHAT DE VOZ CON WEB SPEECH API
+        // Chat de voz con Web Speech API
         socket.on('tts', (data) => {
             if ('speechSynthesis' in window) {
-                // Cancelar cualquier lectura anterior para no acumular
                 window.speechSynthesis.cancel();
                 
                 const utterance = new SpeechSynthesisUtterance(data.texto);
@@ -375,7 +862,6 @@
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
                 
-                // Intentar usar una voz en español
                 const voces = window.speechSynthesis.getVoices();
                 const vozEspanol = voces.find(v => v.lang.startsWith('es'));
                 if (vozEspanol) {
@@ -386,12 +872,10 @@
                 console.log('🔊 Leyendo:', data.texto);
                 
                 agregarLog(`🔊 ${data.texto}`, 'info');
-            } else {
-                console.log('❌ Tu navegador no soporta Web Speech API');
-                agregarLog('❌ Web Speech API no disponible', 'error');
             }
         });
 
+        // Conexión
         function conectar() {
             const username = document.getElementById('username').value.trim();
             if (!username) {
@@ -404,8 +888,10 @@
             document.getElementById('btnConectar').disabled = true;
             document.getElementById('username').disabled = true;
             document.getElementById('btnDesconectar').disabled = false;
-            document.getElementById('estado').textContent = 'Conectado';
-            document.getElementById('estado').className = 'status connected';
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Conectado';
+            
+            agregarLog(`🔄 Conectando a ${username}...`, 'info');
         }
 
         function desconectar() {
@@ -413,10 +899,13 @@
             document.getElementById('btnConectar').disabled = false;
             document.getElementById('username').disabled = false;
             document.getElementById('btnDesconectar').disabled = true;
-            document.getElementById('estado').textContent = 'Desconectado';
-            document.getElementById('estado').className = 'status disconnected';
+            document.getElementById('statusDot').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'Desconectado';
+            
+            agregarLog('📴 Desconectado', 'info');
         }
 
+        // Configuración de voz
         function actualizarConfigVoz() {
             const config = {
                 vozActivada: document.getElementById('vozActivada').checked,
@@ -429,6 +918,7 @@
             agregarLog('⚙️ Configuración de voz actualizada', 'info');
         }
 
+        // Filtros
         function actualizarFiltros() {
             const config = {
                 filtroActivado: document.getElementById('filtroActivado').checked,
@@ -445,6 +935,7 @@
             agregarLog('✅ Filtros actualizados', 'success');
         }
 
+        // Logs
         function agregarLog(mensaje, tipo) {
             const container = document.getElementById('logContainer');
             const entry = document.createElement('div');
@@ -457,7 +948,33 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Cargar voces disponibles (necesario en algunos navegadores)
+        function agregarLog2(mensaje, tipo) {
+            const container = document.getElementById('logContainer2');
+            if (!container) return;
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${tipo}`;
+            
+            const hora = new Date().toLocaleTimeString();
+            entry.textContent = `[${hora}] ${mensaje}`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Cerrar sesión (simulado)
+        function cerrarSesion() {
+            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                desconectar();
+                agregarLog('🚪 Sesión cerrada', 'info');
+            }
+        }
+
+        // Actualizar URLs con el dominio actual
+        const dominio = window.location.origin;
+        document.getElementById('urlOverlay').textContent = `${dominio}/overlay`;
+        document.getElementById('urlRanking').textContent = `${dominio}/ranking`;
+
+        // Cargar voces
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
             window.speechSynthesis.onvoiceschanged = () => {
