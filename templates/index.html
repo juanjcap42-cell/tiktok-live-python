@@ -4,66 +4,586 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top Tap Tap - Dashboard</title>
-    <!-- Firebase SDK (Versión Compat para facilitar uso en HTML) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        /* ... (MANTÉN TODO TU CSS ACTUAL IGUAL, NO LO BORRES) ... */
-        /* Solo agrego este estilo nuevo para el panel de sonidos */
-        .sound-status {
-            margin-top: 15px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #1a1a1a;
+            border-right: 2px solid #333;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-logo h1 {
+            color: #ff0066;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu button {
+            width: 100%;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: #ccc;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .sidebar-menu button:hover {
+            background: rgba(255, 0, 102, 0.1);
+            color: #fff;
+        }
+
+        .sidebar-menu button.active {
+            background: rgba(255, 0, 102, 0.2);
+            color: #ff0066;
+            border-left-color: #ff0066;
+            font-weight: bold;
+        }
+
+        .sidebar-menu button .icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid #333;
+        }
+
+        .sidebar-footer button {
+            width: 100%;
             padding: 12px;
+            background: #333;
+            color: #fff;
+            border: none;
             border-radius: 8px;
+            cursor: pointer;
             font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-footer button:hover {
+            background: #ff0066;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .section {
             display: none;
         }
-        .sound-status.success { background: rgba(0, 255, 136, 0.1); border-left: 4px solid #00ff88; color: #00ff88; display: block; }
-        .sound-status.error { background: rgba(255, 68, 68, 0.1); border-left: 4px solid #ff4444; color: #ff6666; display: block; }
-        .current-sound-info {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border: 1px dashed #555;
+
+        .section.active {
+            display: block;
         }
-    </style>
-    <!-- PEGA AQUÍ TODO EL CSS QUE YA TENÍAS EN index.html -->
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; display: flex; }
-        .sidebar { width: 250px; background: #1a1a1a; border-right: 2px solid #333; padding: 20px 0; display: flex; flex-direction: column; position: fixed; height: 100vh; overflow-y: auto; }
-        .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
-        .sidebar-logo h1 { color: #ff0066; font-size: 1.5em; display: flex; align-items: center; gap: 10px; }
-        .sidebar-menu { list-style: none; flex: 1; }
-        .sidebar-menu li { margin-bottom: 5px; }
-        .sidebar-menu button { width: 100%; padding: 15px 20px; background: transparent; border: none; color: #ccc; font-size: 16px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.3s; border-left: 4px solid transparent; }
-        .sidebar-menu button:hover { background: rgba(255, 0, 102, 0.1); color: #fff; }
-        .sidebar-menu button.active { background: rgba(255, 0, 102, 0.2); color: #ff0066; border-left-color: #ff0066; font-weight: bold; }
-        .sidebar-menu button .icon { font-size: 20px; width: 24px; text-align: center; }
-        .sidebar-footer { padding: 20px; border-top: 1px solid #333; }
-        .sidebar-footer button { width: 100%; padding: 12px; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
-        .sidebar-footer button:hover { background: #ff0066; }
-        .main-content { margin-left: 250px; flex: 1; padding: 40px; min-height: 100vh; }
-        .section { display: none; }
-        .section.active { display: block; }
-        .section-header { text-align: center; margin-bottom: 40px; }
-        .section-header h2 { color: #ff0066; font-size: 2.5em; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 0, 102, 0.5); }
-        .section-header p { color: #888; font-size: 1.1em; }
-        .voice-panel { background: #1a1a1a; border: 2px solid #333; border-radius: 15px; padding: 30px; max-width: 900px; margin: 0 auto 30px; }
-        .voice-panel h3 { color: #00ff88; margin-bottom: 20px; font-size: 1.3em; display: flex; align-items: center; gap: 10px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; color: #ccc; font-size: 14px; }
-        .form-group input[type="text"], .form-group input[type="file"] { width: 100%; padding: 12px; background: #0a0a0a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
-        .form-group input:focus { border-color: #00ff88; }
-        .btn-connect { padding: 12px 25px; background: linear-gradient(135deg, #ff0066, #ff4444); color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; margin-right: 10px; }
-        .btn-connect:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255, 0, 102, 0.5); }
-        .btn-secondary { padding: 12px 25px; background: #333; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-        .btn-secondary:hover { background: #444; }
-        .tts-info { background: rgba(0, 170, 255, 0.1); border-left: 4px solid #00aaff; padding: 12px 15px; border-radius: 5px; font-size: 13px; color: #00aaff; margin-top: 15px; }
-        .current-sound-info { margin-top: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border: 1px dashed #555; }
-        .sound-status { margin-top: 15px; padding: 12px; border-radius: 8px; font-size: 14px; display: none; }
-        .sound-status.success { background: rgba(0, 255, 136, 0.1); border-left: 4px solid #00ff88; color: #00ff88; display: block; }
-        .sound-status.error { background: rgba(255, 68, 68, 0.1); border-left: 4px solid #ff4444; color: #ff6666; display: block; }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .section-header h2 {
+            color: #ff0066;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .section-header p {
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        .connection-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .connection-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px 20px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-connect {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #ff0066, #ff4444);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 0, 102, 0.5);
+        }
+
+        .btn-disconnect {
+            padding: 15px 30px;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-disconnect:hover {
+            background: #ff4444;
+        }
+
+        .btn-disconnect:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        .feature-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            border-color: #ff0066;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 0, 102, 0.2);
+        }
+
+        .feature-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h4 {
+            color: #ff0066;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature-card p {
+            color: #888;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .voice-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto 30px;
+        }
+
+        .voice-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .voice-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .voice-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .voice-option:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .voice-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #00ff88;
+        }
+
+        .voice-option label {
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+            color: #fff;
+        }
+
+        .voice-type-selector {
+            margin-top: 20px;
+            padding: 20px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+
+        .voice-type-selector h4 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .voice-type-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .voice-type-btn {
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .voice-type-btn:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .voice-type-btn.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .voice-type-btn .icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+
+        .voice-type-btn .label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .tts-info {
+            background: rgba(0, 170, 255, 0.1);
+            border-left: 4px solid #00aaff;
+            padding: 12px 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #00aaff;
+            margin-top: 15px;
+        }
+
+        .tts-queue-info {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid #FFD700;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #FFD700;
+        }
+
+        .filters-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .filters-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-item:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .filter-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #00ff88;
+        }
+
+        .filter-item label {
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+            color: #fff;
+        }
+
+        .log-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 30px auto;
+        }
+
+        .log-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .log-container {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .log-entry.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+            color: #ff6666;
+        }
+
+        .log-entry.success {
+            border-left-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .log-entry.info {
+            border-left-color: #00aaff;
+            background: rgba(0, 170, 255, 0.05);
+        }
+
+        .overlay-panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .overlay-panel h3 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .overlay-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .overlay-link {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        .overlay-link:hover {
+            border-color: #ff0066;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 0, 102, 0.2);
+        }
+
+        .overlay-link .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .overlay-link h4 {
+            color: #ff0066;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .overlay-link p {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .overlay-link .url {
+            margin-top: 15px;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #00ff88;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -71,279 +591,640 @@
         <div class="sidebar-logo">
             <h1>🏆 TOP TAP TAP</h1>
         </div>
+        
         <ul class="sidebar-menu">
-            <li><button class="nav-btn active" data-section="inicio"><span class="icon">🏠</span>Inicio</button></li>
-            <li><button class="nav-btn" data-section="chatvoz"><span class="icon">🎙️</span>Chat de Voz</button></li>
-            <li><button class="nav-btn" data-section="sonidos"><span class="icon">🔊</span>Sonidos</button></li> <!-- NUEVO BOTÓN -->
-            <li><button class="nav-btn" data-section="overlay"><span class="icon">🖼️</span>Overlay</button></li>
-            <li><button class="nav-btn" data-section="config"><span class="icon">⚙️</span>Configuración</button></li>
+            <li>
+                <button class="nav-btn active" data-section="inicio">
+                    <span class="icon">🏠</span>
+                    Inicio
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="chatvoz">
+                    <span class="icon">🎙️</span>
+                    Chat de Voz
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="overlay">
+                    <span class="icon">🖼️</span>
+                    Overlay
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-section="config">
+                    <span class="icon">⚙️</span>
+                    Configuración
+                </button>
+            </li>
         </ul>
+
         <div class="sidebar-footer">
-            <button onclick="window.location.href='/logout'">🚪 Cerrar Sesión</button>
+            <button onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
         </div>
     </aside>
 
     <main class="main-content">
-        <!-- SECCIÓN INICIO (Resumida para ahorrar espacio, mantén la tuya) -->
+        
         <section id="inicio" class="section active">
-            <div class="section-header"><h2>🏆 TOP TAP TAP</h2><p>Panel de control principal</p></div>
-            <div class="voice-panel">
+            <div class="section-header">
+                <h2>🏆 TOP TAP TAP</h2>
+                <p>Conecta tu TikTok Live y haz que tus espectadores compitan por el Top 1</p>
+            </div>
+
+            <div class="connection-panel">
                 <h3>📡 Conexión a TikTok Live</h3>
-                <div class="form-group">
+                <div class="input-group">
                     <input type="text" id="username" placeholder="@usuario_de_tiktok" />
+                    <button class="btn-connect" id="btnConectar" onclick="conectar()">
+                        ⚡ CONECTAR
+                    </button>
+                    <button class="btn-disconnect" id="btnDesconectar" onclick="desconectar()" disabled>
+                        🔴 DESCONECTAR
+                    </button>
                 </div>
-                <button class="btn-connect" id="btnConectar" onclick="conectar()">⚡ CONECTAR</button>
-                <button class="btn-secondary" id="btnDesconectar" onclick="desconectar()" disabled>🔴 DESCONECTAR</button>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Desconectado</span>
+                </div>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">🎮</div>
+                    <h4>Pelotas Rebotando</h4>
+                    <p>Top 3 con fotos reales rebotando</p>
+                </div>
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">👑</div>
+                    <h4>Corona al #1</h4>
+                    <p>El líder tiene corona dorada</p>
+                </div>
+                <div class="feature-card" onclick="navegarA('overlay')">
+                    <div class="icon">🏆</div>
+                    <h4>Ranking Top 6</h4>
+                    <p>Lista de los más activos</p>
+                </div>
+                <div class="feature-card" onclick="navegarA('chatvoz')">
+                    <div class="icon">🎙️</div>
+                    <h4>Chat de Voz IA</h4>
+                    <p>Lee comentarios en voz alta</p>
+                </div>
+                <div class="feature-card" onclick="navegarA('config')">
+                    <div class="icon">🛡️</div>
+                    <h4>Filtros Inteligentes</h4>
+                    <p>Anti-spam y anti-groserías</p>
+                </div>
+                <div class="feature-card" onclick="navegarA('overlay')">
+                    <div class="icon">🎨</div>
+                    <h4>Fondo Transparente</h4>
+                    <p>Perfecto para OBS/TikTok</p>
+                </div>
             </div>
         </section>
 
-        <!-- SECCIÓN CHAT DE VOZ (Mantén tu código actual aquí) -->
         <section id="chatvoz" class="section">
-            <div class="section-header"><h2>🎙️ Chat de Voz</h2></div>
+            <div class="section-header">
+                <h2>🎙️ Chat de Voz</h2>
+                <p>Configura cómo se leen los mensajes en voz alta</p>
+            </div>
+
             <div class="voice-panel">
                 <h3>🔊 Opciones de Voz</h3>
-                <p style="color:#888;">(Tu configuración de voz actual va aquí)</p>
+                <div class="voice-options">
+                    <div class="voice-option">
+                        <input type="checkbox" id="vozActivada" onchange="actualizarConfigVoz()">
+                        <label for="vozActivada">Activar chat de voz</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloSeguidores" onchange="actualizarConfigVoz()">
+                        <label for="soloSeguidores">Solo seguidores</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloDonadores" onchange="actualizarConfigVoz()">
+                        <label for="soloDonadores">Solo donadores</label>
+                    </div>
+                    <div class="voice-option">
+                        <input type="checkbox" id="soloQuiéreme" onchange="actualizarConfigVoz()">
+                        <label for="soloQuiéreme">Solo con regalo Quiéreme 🌹</label>
+                    </div>
+                </div>
+
+                <!-- SELECTOR DE TIPO DE VOZ -->
+                <div class="voice-type-selector">
+                    <h4>🎭 Tipo de Voz</h4>
+                    <div class="voice-type-options">
+                        <div class="voice-type-btn active" data-type="masculina" onclick="seleccionarTipoVoz('masculina')">
+                            <div class="icon">👨</div>
+                            <div class="label">Masculina</div>
+                        </div>
+                        <div class="voice-type-btn" data-type="femenina" onclick="seleccionarTipoVoz('femenina')">
+                            <div class="icon">👩</div>
+                            <div class="label">Femenina</div>
+                        </div>
+                        <div class="voice-type-btn" data-type="variada" onclick="seleccionarTipoVoz('variada')">
+                            <div class="icon">🎭</div>
+                            <div class="label">Variada</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tts-info">
+                    💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
+                </div>
+                <div class="tts-queue-info" id="ttsQueueInfo">
+                    📋 Cola de lectura: 0 mensajes pendientes
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button onclick="probarVoz()" style="padding: 10px 20px; background: #00aaff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; margin-right: 10px;">
+                        🔊 Probar voz
+                    </button>
+                    <button onclick="limpiarCola()" style="padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        🗑️ Limpiar cola
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-panel">
+                <h3>🛡️ Filtros de Mensajes</h3>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filtroActivado" checked onchange="actualizarFiltros()">
+                        <label for="filtroActivado">Activar filtros</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearGroserias" checked onchange="actualizarFiltros()">
+                        <label for="bloquearGroserias">Bloquear groserías</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEmojis" onchange="actualizarFiltros()">
+                        <label for="bloquearEmojis">Bloquear emojis</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearNumeros" onchange="actualizarFiltros()">
+                        <label for="bloquearNumeros">Bloquear números</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEnlaces" checked onchange="actualizarFiltros()">
+                        <label for="bloquearEnlaces">Bloquear enlaces</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearSpam" checked onchange="actualizarFiltros()">
+                        <label for="bloquearSpam">Bloquear spam (mensajes repetidos)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="banearAutomatico" onchange="actualizarFiltros()">
+                        <label for="banearAutomatico">Baneo automático de 5 minutos</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>📋 Registro de Actividad</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry info">Esperando conexión...</div>
+                </div>
             </div>
         </section>
 
-        <!-- ✅ NUEVA SECCIÓN: SONIDOS -->
-        <section id="sonidos" class="section">
-            <div class="section-header">
-                <h2>🔊 Panel de Sonidos</h2>
-                <p>Sube un sonido personalizado y asígnale una tecla para reproducirlo en vivo.</p>
-            </div>
-
-            <div class="voice-panel">
-                <h3>🎵 Configurar Sonido Personalizado</h3>
-                
-                <div class="form-group">
-                    <label>Nombre del sonido (opcional):</label>
-                    <input type="text" id="soundName" placeholder="Ej: Aplausos, Alerta, Drumroll">
-                </div>
-
-                <div class="form-group">
-                    <label>Archivo de audio (MP3 o WAV, máx 1MB):</label>
-                    <input type="file" id="soundFile" accept="audio/mp3, audio/wav, audio/mpeg">
-                    <small style="color: #888; display: block; margin-top: 5px;">💡 Tip: Usa sonidos cortos (2-5 segundos) para que carguen rápido.</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Tecla rápida (Hotkey):</label>
-                    <input type="text" id="soundHotkey" placeholder="Ej: F1, F2, Space, A, 1" maxlength="10">
-                    <small style="color: #888; display: block; margin-top: 5px;">⚠️ Haz clic en este campo y presiona la tecla que quieres usar.</small>
-                </div>
-
-                <button class="btn-connect" onclick="guardarConfiguracionSonido()">💾 Guardar Configuración</button>
-                <button class="btn-secondary" onclick="probarSonidoManual()">▶️ Probar Sonido</button>
-
-                <div id="soundStatus" class="sound-status"></div>
-
-                <div class="current-sound-info" id="currentSoundInfo" style="display: none;">
-                    <h4 style="color: #00ff88; margin-bottom: 10px;">✅ Sonido Activo:</h4>
-                    <p><strong>Nombre:</strong> <span id="displaySoundName">-</span></p>
-                    <p><strong>Tecla asignada:</strong> <span id="displaySoundHotkey" style="background: #ff0066; padding: 2px 8px; border-radius: 4px; color: white;">-</span></p>
-                    <p style="color: #888; font-size: 12px; margin-top: 10px;">💡 Presiona esa tecla en cualquier momento para reproducir el sonido.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECCIÓN OVERLAY Y CONFIG (Mantén tus secciones actuales) -->
         <section id="overlay" class="section">
-            <div class="section-header"><h2>🖼️ Overlay</h2></div>
-            <div class="voice-panel"><p>URLs del overlay aquí...</p></div>
-        </section>
-        
-        <section id="config" class="section">
-            <div class="section-header"><h2>⚙️ Configuración</h2></div>
-            <div class="voice-panel"><p>Filtros aquí...</p></div>
-        </section>
-    </main>
+            <div class="section-header">
+                <h2>🖼️ Overlay</h2>
+                <p>Agrega estas URLs como fuente de navegador en OBS o TikTok Studio</p>
+            </div>
 
-    <!-- Email del usuario oculto para Firebase -->
-    <input type="hidden" id="userEmail" value="{{ session.get('user_id', '') }}">
+            <div class="overlay-panel">
+                <h3>📺 Fuentes para tu transmisión</h3>
+                <p style="color: #888; margin-bottom: 20px;">
+                    Copia estas URLs y agrégalas como "Fuente de Navegador" en OBS Studio o TikTok Studio
+                </p>
+
+                <div class="overlay-links">
+                    <a href="/overlay" target="_blank" class="overlay-link">
+                        <div class="icon">🖼️</div>
+                        <h4>Overlay Principal</h4>
+                        <p>Ranking de taps + Pelotas rebotando</p>
+                        <div class="url" id="urlOverlay">/overlay</div>
+                    </a>
+
+                    <a href="/ranking" target="_blank" class="overlay-link">
+                        <div class="icon">🏆</div>
+                        <h4>Ranking Animado</h4>
+                        <p>Solo pelotas rebotando (fondo verde)</p>
+                        <div class="url" id="urlRanking">/ranking</div>
+                    </a>
+                </div>
+
+                <div style="margin-top: 40px; padding: 20px; background: #0a0a0a; border-radius: 10px; text-align: left;">
+                    <h4 style="color: #ff0066; margin-bottom: 15px;">📋 Instrucciones para TikTok Studio:</h4>
+                    <ol style="color: #888; line-height: 2; padding-left: 20px;">
+                        <li>Haz clic en <strong style="color: #fff;">"+ Añadir fuente"</strong></li>
+                        <li>Selecciona <strong style="color: #fff;">"Enlace"</strong></li>
+                        <li>Pega la URL del overlay</li>
+                        <li>Configura: <strong style="color: #fff;">Ancho: 1920, Alto: 1080</strong></li>
+                        <li><strong style="color: #ff4444;">Desactiva "Activar sonido"</strong> para evitar voz duplicada</li>
+                        <li>Haz clic en <strong style="color: #fff;">"Añadir fuente"</strong></li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section id="config" class="section">
+            <div class="section-header">
+                <h2>⚙️ Configuración</h2>
+                <p>Ajustes adicionales del sistema</p>
+            </div>
+
+            <div class="filters-panel">
+                <h3>🛡️ Filtros de Mensajes</h3>
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filtroActivado2" checked onchange="actualizarFiltros()">
+                        <label for="filtroActivado2">Activar filtros</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearGroserias2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearGroserias2">Bloquear groserías</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEmojis2" onchange="actualizarFiltros()">
+                        <label for="bloquearEmojis2">Bloquear emojis</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearNumeros2" onchange="actualizarFiltros()">
+                        <label for="bloquearNumeros2">Bloquear números</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearEnlaces2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearEnlaces2">Bloquear enlaces</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="bloquearSpam2" checked onchange="actualizarFiltros()">
+                        <label for="bloquearSpam2">Bloquear spam (mensajes repetidos)</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="banearAutomatico2" onchange="actualizarFiltros()">
+                        <label for="banearAutomatico2">Baneo automático de 5 minutos</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>📋 Registro de Actividad</h3>
+                <div class="log-container" id="logContainer2">
+                    <div class="log-entry info">Sistema iniciado</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script>
-        // ==========================================
-        // 1. CONFIGURACIÓN DE FIREBASE (FRONTEND)
-        // ==========================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyAND15nfIz2g40apV3e8moGUwwbEcs1_6E",
-            authDomain: "top-tap-tap-9dd4f.firebaseapp.com",
-            projectId: "top-tap-tap-9dd4f",
-            storageBucket: "top-tap-tap-9dd4f.firebasestorage.app",
-            messagingSenderId: "390118429592",
-            appId: "1:390118429592:web:9dccb2396794c4174bd1ed"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // ==========================================
-        // 2. VARIABLES GLOBALES DE SONIDO
-        // ==========================================
-        let audioConfig = { name: '', base64: '', hotkey: '' };
-        let audioElement = new Audio();
         const socket = io();
 
-        // ==========================================
-        // 3. NAVEGACIÓN
-        // ==========================================
+        // ============ NAVEGACIÓN ============
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById(btn.dataset.section).classList.add('active');
-                btn.classList.add('active');
+                const section = btn.dataset.section;
+                navegarA(section);
             });
         });
 
-        // ==========================================
-        // 4. LÓGICA DE SONIDOS
-        // ==========================================
-        
-        // Cargar configuración al iniciar
-        window.addEventListener('DOMContentLoaded', () => {
-            cargarConfiguracionSonido();
-        });
+        function navegarA(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            
+            const btn = document.querySelector(`[data-section="${sectionId}"]`);
+            if (btn) btn.classList.add('active');
+        }
 
-        // Capturar tecla en el input de hotkey
-        document.getElementById('soundHotkey').addEventListener('keydown', function(e) {
-            e.preventDefault(); // Evitar que se escriba en el input
-            let key = e.key;
-            if (key === ' ') key = 'Space';
-            if (key.length === 1) key = key.toUpperCase();
-            this.value = key;
-        });
+        // ============ COLA DE TTS ============
+        let colaTTS = [];
+        let reproduciendo = false;
+        let vocesDisponibles = [];
+        let tipoVozActual = 'masculina'; // masculina, femenina, variada
+        let vozMasculina = null;
+        let vozFemenina = null;
+        let usarVozFemenina = false; // Para alternar en modo variado
 
-        // Convertir archivo a Base64 cuando se selecciona
-        document.getElementById('soundFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // Cargar voces disponibles
+        function cargarVoces() {
+            vocesDisponibles = window.speechSynthesis.getVoices();
+            console.log('🎤 Voces disponibles:', vocesDisponibles.length);
+            
+            // Clasificar voces en español por género
+            const vocesEspanol = vocesDisponibles.filter(v => v.lang.startsWith('es'));
+            console.log('🎤 Voces en español:', vocesEspanol.length);
+            
+            vocesEspanol.forEach((voz, index) => {
+                console.log(`  ${index}: ${voz.name} (${voz.lang})`);
+            });
+            
+            // Intentar detectar voz masculina y femenina
+            // Estrategia: buscar nombres comunes de voces
+            vozMasculina = vocesEspanol.find(v => 
+                v.name.toLowerCase().includes('male') || 
+                v.name.toLowerCase().includes('hombre') ||
+                v.name.toLowerCase().includes('jorge') ||
+                v.name.toLowerCase().includes('carlos') ||
+                v.name.toLowerCase().includes('diego') ||
+                v.name.toLowerCase().includes('pablo') ||
+                v.name.toLowerCase().includes('juan') ||
+                v.lang === 'es-MX'
+            );
+            
+            vozFemenina = vocesEspanol.find(v => 
+                v.name.toLowerCase().includes('female') || 
+                v.name.toLowerCase().includes('mujer') ||
+                v.name.toLowerCase().includes('maria') ||
+                v.name.toLowerCase().includes('laura') ||
+                v.name.toLowerCase().includes('helena') ||
+                v.name.toLowerCase().includes('paulina') ||
+                v.name.toLowerCase().includes('monica') ||
+                v.lang === 'es-ES'
+            );
+            
+            // Si no se encontraron, usar la primera voz en español
+            if (!vozMasculina && vocesEspanol.length > 0) {
+                vozMasculina = vocesEspanol[0];
+            }
+            if (!vozFemenina && vocesEspanol.length > 1) {
+                vozFemenina = vocesEspanol[1];
+            }
+            
+            console.log('👨 Voz masculina:', vozMasculina ? vozMasculina.name : 'No encontrada');
+            console.log('👩 Voz femenina:', vozFemenina ? vozFemenina.name : 'No encontrada');
+        }
 
-            if (file.size > 1000000) { // 1MB límite
-                mostrarEstado('❌ El archivo es demasiado grande. Máximo 1MB.', 'error');
-                this.value = '';
+        cargarVoces();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = cargarVoces;
+        }
+
+        // Seleccionar tipo de voz
+        function seleccionarTipoVoz(tipo) {
+            tipoVozActual = tipo;
+            
+            // Actualizar UI
+            document.querySelectorAll('.voice-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${tipo}"]`).classList.add('active');
+            
+            console.log(`🎭 Tipo de voz seleccionado: ${tipo}`);
+            agregarLog(`🎭 Tipo de voz: ${tipo}`, 'info');
+        }
+
+        // Obtener voz según el tipo seleccionado
+        function obtenerVoz() {
+            if (tipoVozActual === 'masculina') {
+                return vozMasculina;
+            } else if (tipoVozActual === 'femenina') {
+                return vozFemenina;
+            } else if (tipoVozActual === 'variada') {
+                // Alternar entre masculina y femenina
+                usarVozFemenina = !usarVozFemenina;
+                return usarVozFemenina ? vozFemenina : vozMasculina;
+            }
+            return vozMasculina;
+        }
+
+        // Función para procesar la cola de TTS
+        function procesarColaTTS() {
+            if (colaTTS.length === 0) {
+                reproduciendo = false;
+                actualizarInfoCola();
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                audioConfig.base64 = event.target.result;
-                mostrarEstado('✅ Audio cargado correctamente en memoria.', 'success');
+            reproduciendo = true;
+            const mensaje = colaTTS.shift();
+            
+            const utterance = new SpeechSynthesisUtterance(mensaje);
+            utterance.lang = 'es-MX';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            // Obtener voz según el tipo seleccionado
+            const vozSeleccionada = obtenerVoz();
+            if (vozSeleccionada) {
+                utterance.voice = vozSeleccionada;
+            }
+            
+            // Cuando termine de leer este mensaje, procesa el siguiente
+            utterance.onend = () => {
+                console.log('✅ Terminó:', mensaje);
+                procesarColaTTS();
             };
-            reader.readAsDataURL(file);
-        });
-
-        async function guardarConfiguracionSonido() {
-            const email = document.getElementById('userEmail').value;
-            const name = document.getElementById('soundName').value || 'Sonido Personalizado';
-            const hotkey = document.getElementById('soundHotkey').value;
-
-            if (!audioConfig.base64 && !hotkey) {
-                mostrarEstado('⚠️ Debes subir un archivo de audio o asignar una tecla.', 'error');
-                return;
-            }
-
-            audioConfig.name = name;
-            audioConfig.hotkey = hotkey.toLowerCase();
-
-            try {
-                // Guardar en Firebase
-                await db.collection('streamers').doc(email).set({
-                    sound_config: audioConfig
-                }, { merge: true });
-
-                mostrarEstado('✅ Configuración guardada exitosamente en la nube.', 'success');
-                actualizarVistaSonidoActual();
-            } catch (error) {
-                console.error(error);
-                mostrarEstado('❌ Error al guardar en la base de datos.', 'error');
-            }
+            
+            utterance.onerror = (event) => {
+                console.error('❌ Error:', event.error);
+                procesarColaTTS();
+            };
+            
+            window.speechSynthesis.speak(utterance);
+            actualizarInfoCola();
         }
 
-        async function cargarConfiguracionSonido() {
-            const email = document.getElementById('userEmail').value;
-            if (!email) return;
+        // Agregar mensaje a la cola
+        function agregarAColaTTS(texto) {
+            colaTTS.push(texto);
+            console.log(`📥 Mensaje agregado a cola (total: ${colaTTS.length})`);
+            
+            if (!reproduciendo) {
+                procesarColaTTS();
+            }
+            
+            actualizarInfoCola();
+        }
 
-            try {
-                const doc = await db.collection('streamers').doc(email).get();
-                if (doc.exists && doc.data().sound_config) {
-                    audioConfig = doc.data().sound_config;
-                    document.getElementById('soundName').value = audioConfig.name || '';
-                    document.getElementById('soundHotkey').value = audioConfig.hotkey || '';
-                    
-                    if (audioConfig.base64) {
-                        audioElement.src = audioConfig.base64;
-                    }
-                    actualizarVistaSonidoActual();
-                }
-            } catch (error) {
-                console.error('Error cargando sonido:', error);
+        function actualizarInfoCola() {
+            const info = document.getElementById('ttsQueueInfo');
+            if (info) {
+                const estado = reproduciendo ? '🔊 Leyendo...' : '⏸️ En pausa';
+                const tipoVoz = tipoVozActual === 'variada' ? 
+                    (usarVozFemenina ? '👩 Femenina' : '👨 Masculina') : 
+                    (tipoVozActual === 'femenina' ? '👩 Femenina' : '👨 Masculina');
+                info.textContent = `📋 Cola: ${colaTTS.length} mensajes | ${estado} | Voz: ${tipoVoz}`;
             }
         }
 
-        function actualizarVistaSonidoActual() {
-            if (audioConfig.hotkey) {
-                document.getElementById('currentSoundInfo').style.display = 'block';
-                document.getElementById('displaySoundName').textContent = audioConfig.name || 'Sin nombre';
-                document.getElementById('displaySoundHotkey').textContent = audioConfig.hotkey.toUpperCase();
-            }
+        function limpiarCola() {
+            colaTTS = [];
+            window.speechSynthesis.cancel();
+            reproduciendo = false;
+            actualizarInfoCola();
+            agregarLog('🗑️ Cola de voz limpiada', 'info');
         }
 
-        function probarSonidoManual() {
-            if (audioElement.src) {
-                audioElement.currentTime = 0;
-                audioElement.play().catch(e => console.log('Interacción requerida para reproducir audio'));
-            } else {
-                mostrarEstado('⚠️ No hay audio cargado para probar.', 'error');
-            }
-        }
-
-        function mostrarEstado(mensaje, tipo) {
-            const el = document.getElementById('soundStatus');
-            el.textContent = mensaje;
-            el.className = 'sound-status ' + tipo;
-            setTimeout(() => { el.style.display = 'none'; }, 5000);
-        }
-
-        // ==========================================
-        // 5. LISTENER GLOBAL DE TECLADO (HOTKEY)
-        // ==========================================
-        document.addEventListener('keydown', (e) => {
-            // Ignorar si el usuario está escribiendo en un input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            let pressedKey = e.key;
-            if (pressedKey === ' ') pressedKey = 'Space';
-            pressedKey = pressedKey.toLowerCase();
-
-            // Si la tecla presionada coincide con la configurada
-            if (audioConfig.hotkey && pressedKey === audioConfig.hotkey.toLowerCase()) {
-                e.preventDefault(); // Evitar comportamiento por defecto (ej: scroll con Space)
-                console.log(`🔊 Reproduciendo sonido por tecla: ${pressedKey}`);
+        function probarVoz() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                colaTTS = [];
+                reproduciendo = false;
                 
-                // Clonar el elemento de audio para permitir reproducciones rápidas superpuestas
-                const soundClone = new Audio(audioElement.src);
-                soundClone.volume = 1.0;
-                soundClone.play().catch(err => console.error('Error reproduciendo:', err));
+                const utterance = new SpeechSynthesisUtterance('Hola, esta es una prueba de voz del chat de voz de Top Tap Tap');
+                utterance.lang = 'es-MX';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                const vozSeleccionada = obtenerVoz();
+                if (vozSeleccionada) {
+                    utterance.voice = vozSeleccionada;
+                    console.log(`🔊 Probando voz: ${vozSeleccionada.name} (${vozSeleccionada.lang})`);
+                }
+                
+                window.speechSynthesis.speak(utterance);
+                agregarLog('🔊 Probando voz del sistema...', 'info');
+            } else {
+                alert('Tu navegador no soporta Web Speech API');
+            }
+        }
+
+        // ============ SOCKET.IO EVENTS ============
+        socket.on('connect', () => {
+            console.log('✅ Conectado al servidor');
+            agregarLog('✅ Conectado al servidor', 'success');
+            agregarLog2('✅ Conectado al servidor', 'success');
+        });
+
+        socket.on('log', (data) => {
+            agregarLog(data.msg, data.type || 'info');
+            agregarLog2(data.msg, data.type || 'info');
+        });
+
+        socket.on('chat', (data) => {
+            agregarLog(`💬 ${data.nickname}: ${data.comment}`, 'success');
+            agregarLog2(`💬 ${data.nickname}: ${data.comment}`, 'success');
+        });
+
+        socket.on('like', (data) => {
+            agregarLog(`❤️ ${data.nickname} dio ${data.likes} taps`, 'success');
+            agregarLog2(`❤️ ${data.nickname} dio ${data.likes} taps`, 'success');
+        });
+
+        socket.on('gift', (data) => {
+            agregarLog(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
+            agregarLog2(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
+        });
+
+        socket.on('tts', (data) => {
+            if ('speechSynthesis' in window) {
+                agregarAColaTTS(data.texto);
+                console.log('📥 Agregado a cola:', data.texto);
+            } else {
+                console.log('❌ Tu navegador no soporta Web Speech API');
+                agregarLog('❌ Web Speech API no disponible', 'error');
             }
         });
 
-        // ==========================================
-        // 6. TUS FUNCIONES EXISTENTES DE SOCKET.IO
-        // ==========================================
+        // ============ CONEXIÓN ============
         function conectar() {
             const username = document.getElementById('username').value.trim();
-            if(username) {
-                socket.emit('conectar', { username: username });
-                document.getElementById('btnConectar').disabled = true;
-                document.getElementById('btnDesconectar').disabled = false;
+            if (!username) {
+                agregarLog('❌ Ingresa un nombre de usuario', 'error');
+                return;
             }
+            
+            socket.emit('conectar', { username: username });
+            
+            document.getElementById('btnConectar').disabled = true;
+            document.getElementById('username').disabled = true;
+            document.getElementById('btnDesconectar').disabled = false;
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Conectado';
+            
+            agregarLog(`🔄 Conectando a ${username}...`, 'info');
         }
+
         function desconectar() {
             socket.emit('desconectar');
             document.getElementById('btnConectar').disabled = false;
+            document.getElementById('username').disabled = false;
             document.getElementById('btnDesconectar').disabled = true;
+            document.getElementById('statusDot').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'Desconectado';
+            
+            limpiarCola();
+            
+            agregarLog('📴 Desconectado', 'info');
+        }
+
+        // ============ CONFIGURACIÓN ============
+        function actualizarConfigVoz() {
+            const config = {
+                vozActivada: document.getElementById('vozActivada').checked,
+                soloSeguidores: document.getElementById('soloSeguidores').checked,
+                soloDonadores: document.getElementById('soloDonadores').checked,
+                soloQuiéreme: document.getElementById('soloQuiéreme').checked
+            };
+            
+            socket.emit('config-voz', config);
+            agregarLog('⚙️ Configuración de voz actualizada', 'info');
+        }
+
+        function actualizarFiltros() {
+            const config = {
+                filtroActivado: document.getElementById('filtroActivado').checked,
+                bloquearGroserias: document.getElementById('bloquearGroserias').checked,
+                bloquearEmojis: document.getElementById('bloquearEmojis').checked,
+                bloquearNumeros: document.getElementById('bloquearNumeros').checked,
+                bloquearEnlaces: document.getElementById('bloquearEnlaces').checked,
+                bloquearSpam: document.getElementById('bloquearSpam').checked,
+                banearAutomatico: document.getElementById('banearAutomatico').checked,
+                tiempoBaneo: 300
+            };
+            
+            socket.emit('actualizar-filtros', config);
+            agregarLog('✅ Filtros actualizados', 'success');
+        }
+
+        // ============ LOGS ============
+        function agregarLog(mensaje, tipo) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${tipo}`;
+            
+            const hora = new Date().toLocaleTimeString();
+            entry.textContent = `[${hora}] ${mensaje}`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function agregarLog2(mensaje, tipo) {
+            const container = document.getElementById('logContainer2');
+            if (!container) return;
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${tipo}`;
+            
+            const hora = new Date().toLocaleTimeString();
+            entry.textContent = `[${hora}] ${mensaje}`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function cerrarSesion() {
+            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                desconectar();
+                agregarLog('🚪 Sesión cerrada', 'info');
+            }
+        }
+
+        // Actualizar URLs
+        const dominio = window.location.origin;
+        document.getElementById('urlOverlay').textContent = `${dominio}/overlay`;
+        document.getElementById('urlRanking').textContent = `${dominio}/ranking`;
+
+        // Cargar voces
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
         }
     </script>
 </body>
