@@ -2,8 +2,8 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-# ✅ Regex de emojis COMPLETA y moderna (cubre TODOS los rangos Unicode)
-EMOJI_PATTERN = (
+# ✅ Patrón de emojis COMPLETO compilado correctamente con re.compile()
+EMOJI_PATTERN = re.compile(
     "["
     "\U0001F1E0-\U0001F1FF"   # Banderas / regional indicators
     "\U0001F300-\U0001F5FF"   # Símbolos y pictogramas
@@ -65,7 +65,7 @@ class FiltrosManager:
     
     def contiene_emojis(self, texto):
         """✅ Detecta CUALQUIER emoji usando patrón completo"""
-        return bool(re.search(EMOJI_PATTERN, texto))
+        return bool(EMOJI_PATTERN.search(texto))
     
     def contiene_numeros(self, texto):
         return bool(re.search(r'\d', texto))
@@ -100,7 +100,7 @@ class FiltrosManager:
     
     def normalizar_para_comparar(self, texto):
         texto = re.sub(r'@[^\s]+', '', texto)
-        texto = re.sub(EMOJI_PATTERN, '', texto)
+        texto = EMOJI_PATTERN.sub('', texto)
         texto = texto.lower().strip()
         texto = re.sub(r'\s+', ' ', texto)
         return texto
@@ -139,7 +139,6 @@ class FiltrosManager:
         
         # ✅ FILTRO DE EMOJIS CORREGIDO:
         # Ahora bloquea CUALQUIER mensaje que contenga emojis
-        # (antes solo bloqueaba si eran 100% emojis)
         if self.config['bloquearEmojis'] and self.contiene_emojis(mensaje_limpio):
             return False, "Contiene emojis"
         
@@ -169,7 +168,7 @@ class FiltrosManager:
         aunque el filtro de emojis esté DESACTIVADO.
         """
         # 1. Quitar todos los emojis (patrón completo)
-        texto = re.sub(EMOJI_PATTERN, '', texto)
+        texto = EMOJI_PATTERN.sub('', texto)
         
         # 2. Quitar enlaces
         texto = re.sub(r'http[s]?://\S+|www\.\S+', '', texto)
@@ -189,7 +188,7 @@ class FiltrosManager:
         """
         Limpia SOLO el nombre del usuario para TTS.
         """
-        nombre_limpio = re.sub(EMOJI_PATTERN, '', nombre)
+        nombre_limpio = EMOJI_PATTERN.sub('', nombre)
         nombre_limpio = re.sub(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]', '', nombre_limpio)
         nombre_limpio = re.sub(r'\s+', ' ', nombre_limpio).strip()
         
