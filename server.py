@@ -240,7 +240,7 @@ def enviar_ranking_actualizado():
         ranking_likes.values(),
         key=lambda x: x['totalLikes'],
         reverse=True
-    )[:3]
+    )[:6]  # ✅ AHORA ENVÍA TOP 6
     
     cambios = []
     for i, usuario in enumerate(ranking_ordenado):
@@ -292,7 +292,6 @@ def get_avatar_url(user):
     except:
         return None
 
-# ✅ INICIO DEL SERVIDOR CON WAITRESS (para Render)
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     

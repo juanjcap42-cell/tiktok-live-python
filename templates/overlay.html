@@ -30,7 +30,6 @@
             align-items: flex-start;
         }
 
-        /* CUADRO 1: Ranking de taps - AHORA TOP 6 */
         .ranking-box {
             width: 320px;
             min-height: 750px;
@@ -116,7 +115,6 @@
             text-align: center;
         }
 
-        /* CUADRO 2: Pelotitas rebotando - TOP 3 */
         .pelotas-box {
             width: 320px;
             background: rgba(0, 0, 0, 0.85);
@@ -216,7 +214,6 @@
 </head>
 <body>
     <div class="overlay-container">
-        <!-- CUADRO 1: Ranking de taps TOP 6 -->
         <div class="ranking-box">
             <h2>🏆 TOP TAP TAP</h2>
             <ul class="ranking-list" id="rankingList">
@@ -224,7 +221,6 @@
             </ul>
         </div>
 
-        <!-- CUADRO 2: Pelotitas rebotando TOP 3 -->
         <div class="pelotas-box">
             <div id="canvas-container">
                 <div class="sin-usuarios" id="sinUsuarios">Esperando... 💪</div>
@@ -232,8 +228,8 @@
             </div>
             <div class="control-tamano">
                 <label>⚙️ Tamaño:</label>
-                <input type="range" id="tamanoSlider" min="25" max="60" value="40">
-                <span class="valor" id="tamanoValor">40</span>
+                <input type="range" id="tamanoSlider" min="15" max="60" value="25">
+                <span class="valor" id="tamanoValor">25</span>
             </div>
         </div>
     </div>
@@ -252,7 +248,7 @@
         let particulas = [];
         let rankingActual = [];
         let rankingLista = [];
-        let TAMANO_PELOTA = 40;
+        let TAMANO_PELOTA = 25;
 
         const VELOCIDAD_INICIAL = 2;
         const VELOCIDAD_MINIMA = 1;
@@ -586,7 +582,6 @@
             }
 
             rankingList.innerHTML = '';
-            // ✅ AHORA MUESTRA TOP 6
             rankingLista.slice(0, 6).forEach((item, index) => {
                 const li = document.createElement('li');
                 li.className = `rank-item pos-${index + 1}-item`;
@@ -662,7 +657,7 @@
         });
 
         socket.on('ranking-actualizado', (ranking) => {
-            rankingActual = ranking;
+            rankingActual = ranking.slice(0, 3);
             rankingLista = ranking;
             actualizarPelotas();
             actualizarRankingLista();
