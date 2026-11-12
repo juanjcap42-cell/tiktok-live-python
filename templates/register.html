@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrarse - Top Tap Tap</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #0a0a0a;
             color: #fff;
@@ -21,7 +16,6 @@
             justify-content: center;
             padding: 20px;
         }
-
         .register-container {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -31,7 +25,6 @@
             width: 100%;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
-
         .register-container h1 {
             text-align: center;
             font-size: 2.5em;
@@ -41,24 +34,20 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
         .register-container .subtitle {
             text-align: center;
             color: #888;
             margin-bottom: 40px;
         }
-
         .form-group {
             margin-bottom: 25px;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 8px;
             color: #ccc;
             font-size: 14px;
         }
-
         .form-group input {
             width: 100%;
             padding: 15px;
@@ -69,13 +58,11 @@
             font-size: 16px;
             transition: all 0.3s;
         }
-
         .form-group input:focus {
             outline: none;
             border-color: #ff0066;
             box-shadow: 0 0 15px rgba(255, 0, 102, 0.3);
         }
-
         .btn-submit {
             width: 100%;
             padding: 18px;
@@ -89,28 +76,21 @@
             transition: all 0.3s;
             margin-top: 10px;
         }
-
         .btn-submit:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(255, 0, 102, 0.5);
         }
-
         .login-link {
             text-align: center;
             margin-top: 30px;
             color: #888;
         }
-
         .login-link a {
             color: #ff0066;
             text-decoration: none;
             font-weight: bold;
         }
-
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-
+        .login-link a:hover { text-decoration: underline; }
         .error-message {
             background: rgba(255, 68, 68, 0.1);
             border-left: 4px solid #ff4444;
@@ -120,7 +100,6 @@
             color: #ff6666;
             display: none;
         }
-
         .success-message {
             background: rgba(0, 255, 136, 0.1);
             border-left: 4px solid #00ff88;
@@ -140,7 +119,8 @@
         <div class="error-message" id="errorMessage"></div>
         <div class="success-message" id="successMessage"></div>
 
-        <form id="registerForm" onsubmit="handleRegister(event)">
+        <!-- Formulario que envía al backend real -->
+        <form method="POST" action="/register">
             <div class="form-group">
                 <label for="nombre">Nombre completo</label>
                 <input type="text" id="nombre" name="nombre" required placeholder="Tu nombre completo">
@@ -170,43 +150,20 @@
     </div>
 
     <script>
-        function handleRegister(event) {
-            event.preventDefault();
-            
-            const nombre = document.getElementById('nombre').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            const errorDiv = document.getElementById('errorMessage');
-            const successDiv = document.getElementById('successMessage');
-            
-            // Validaciones
-            if (password !== confirmPassword) {
-                errorDiv.textContent = '❌ Las contraseñas no coinciden';
-                errorDiv.style.display = 'block';
-                successDiv.style.display = 'none';
-                return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const msg = urlParams.get('msg');
+        const type = urlParams.get('type');
+        
+        if (msg) {
+            if (type === 'error') {
+                const errDiv = document.getElementById('errorMessage');
+                errDiv.textContent = '⚠️ ' + decodeURIComponent(msg);
+                errDiv.style.display = 'block';
+            } else if (type === 'success') {
+                const sucDiv = document.getElementById('successMessage');
+                sucDiv.textContent = '✅ ' + decodeURIComponent(msg);
+                sucDiv.style.display = 'block';
             }
-            
-            if (password.length < 6) {
-                errorDiv.textContent = '❌ La contraseña debe tener al menos 6 caracteres';
-                errorDiv.style.display = 'block';
-                successDiv.style.display = 'none';
-                return;
-            }
-            
-            // Aquí irá la integración con Firebase
-            console.log('Registrando usuario:', { nombre, email, password });
-            
-            // Simulación de registro exitoso
-            successDiv.textContent = '✅ ¡Cuenta creada exitosamente! Redirigiendo...';
-            successDiv.style.display = 'block';
-            errorDiv.style.display = 'none';
-            
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 2000);
         }
     </script>
 </body>
