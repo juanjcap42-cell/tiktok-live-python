@@ -19,7 +19,6 @@
             display: flex;
         }
 
-        /* SIDEBAR IZQUIERDO */
         .sidebar {
             width: 250px;
             background: #1a1a1a;
@@ -110,7 +109,6 @@
             background: #ff0066;
         }
 
-        /* CONTENIDO PRINCIPAL */
         .main-content {
             margin-left: 250px;
             flex: 1;
@@ -126,7 +124,6 @@
             display: block;
         }
 
-        /* HEADER DE SECCIÓN */
         .section-header {
             text-align: center;
             margin-bottom: 40px;
@@ -144,7 +141,6 @@
             font-size: 1.1em;
         }
 
-        /* PANEL DE CONEXIÓN */
         .connection-panel {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -250,7 +246,6 @@
             box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
         }
 
-        /* FEATURES GRID */
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -291,7 +286,6 @@
             line-height: 1.5;
         }
 
-        /* SECCIÓN CHAT DE VOZ */
         .voice-panel {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -357,7 +351,16 @@
             color: #00aaff;
         }
 
-        /* SECCIÓN FILTROS */
+        .tts-queue-info {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid #FFD700;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #FFD700;
+        }
+
         .filters-panel {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -413,7 +416,6 @@
             color: #fff;
         }
 
-        /* LOG DE ACTIVIDAD */
         .log-panel {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -465,7 +467,6 @@
             background: rgba(0, 170, 255, 0.05);
         }
 
-        /* SECCIÓN OVERLAY */
         .overlay-panel {
             background: #1a1a1a;
             border: 2px solid #333;
@@ -533,7 +534,6 @@
     </style>
 </head>
 <body>
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h1>🏆 TOP TAP TAP</h1>
@@ -571,10 +571,8 @@
         </div>
     </aside>
 
-    <!-- CONTENIDO PRINCIPAL -->
     <main class="main-content">
         
-        <!-- SECCIÓN INICIO -->
         <section id="inicio" class="section active">
             <div class="section-header">
                 <h2>🏆 TOP TAP TAP</h2>
@@ -632,7 +630,6 @@
             </div>
         </section>
 
-        <!-- SECCIÓN CHAT DE VOZ -->
         <section id="chatvoz" class="section">
             <div class="section-header">
                 <h2>🎙️ Chat de Voz</h2>
@@ -661,6 +658,17 @@
                 </div>
                 <div class="tts-info">
                     💡 El chat de voz usa la voz de tu navegador. Asegúrate de tener el volumen activado.
+                </div>
+                <div class="tts-queue-info" id="ttsQueueInfo">
+                    📋 Cola de lectura: 0 mensajes pendientes
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button onclick="probarVoz()" style="padding: 10px 20px; background: #00aaff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; margin-right: 10px;">
+                        🔊 Probar voz
+                    </button>
+                    <button onclick="limpiarCola()" style="padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        🗑️ Limpiar cola
+                    </button>
                 </div>
             </div>
 
@@ -706,7 +714,6 @@
             </div>
         </section>
 
-        <!-- SECCIÓN OVERLAY -->
         <section id="overlay" class="section">
             <div class="section-header">
                 <h2>🖼️ Overlay</h2>
@@ -742,13 +749,13 @@
                         <li>Selecciona <strong style="color: #fff;">"Enlace"</strong></li>
                         <li>Pega la URL del overlay</li>
                         <li>Configura: <strong style="color: #fff;">Ancho: 1920, Alto: 1080</strong></li>
+                        <li><strong style="color: #ff4444;">Desactiva "Activar sonido"</strong> para evitar voz duplicada</li>
                         <li>Haz clic en <strong style="color: #fff;">"Añadir fuente"</strong></li>
                     </ol>
                 </div>
             </div>
         </section>
 
-        <!-- SECCIÓN CONFIGURACIÓN -->
         <section id="config" class="section">
             <div class="section-header">
                 <h2>⚙️ Configuración</h2>
@@ -803,7 +810,7 @@
     <script>
         const socket = io();
 
-        // Navegación entre secciones
+        // ============ NAVEGACIÓN ============
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const section = btn.dataset.section;
@@ -812,19 +819,141 @@
         });
 
         function navegarA(sectionId) {
-            // Ocultar todas las secciones
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
-            // Mostrar la sección seleccionada
             document.getElementById(sectionId).classList.add('active');
             
-            // Activar el botón correspondiente
             const btn = document.querySelector(`[data-section="${sectionId}"]`);
             if (btn) btn.classList.add('active');
         }
 
-        // Socket.IO events
+        // ============ COLA DE TTS (SOLUCIÓN AL PROBLEMA DE SALTOS) ============
+        let colaTTS = [];
+        let reproduciendo = false;
+        let vocesDisponibles = [];
+
+        // Cargar voces disponibles
+        function cargarVoces() {
+            vocesDisponibles = window.speechSynthesis.getVoices();
+            console.log('🎤 Voces disponibles:', vocesDisponibles.length);
+        }
+
+        cargarVoces();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = cargarVoces;
+        }
+
+        // Función para procesar la cola de TTS
+        function procesarColaTTS() {
+            if (colaTTS.length === 0) {
+                reproduciendo = false;
+                actualizarInfoCola();
+                return;
+            }
+
+            reproduciendo = true;
+            const mensaje = colaTTS.shift();
+            
+            const utterance = new SpeechSynthesisUtterance(mensaje);
+            utterance.lang = 'es-MX';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            // Buscar voz en español
+            let vozSeleccionada = vocesDisponibles.find(v => 
+                v.lang === 'es-MX' || v.name.toLowerCase().includes('mexico')
+            );
+            
+            if (!vozSeleccionada) {
+                vozSeleccionada = vocesDisponibles.find(v => v.lang.startsWith('es'));
+            }
+            
+            if (vozSeleccionada) {
+                utterance.voice = vozSeleccionada;
+            }
+            
+            // Cuando termine de leer este mensaje, procesa el siguiente
+            utterance.onend = () => {
+                console.log('✅ Terminó:', mensaje);
+                procesarColaTTS(); // ← Aquí está la magia: procesa el siguiente
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('❌ Error:', event.error);
+                procesarColaTTS(); // Continúa con el siguiente aunque haya error
+            };
+            
+            window.speechSynthesis.speak(utterance);
+            actualizarInfoCola();
+        }
+
+        // Agregar mensaje a la cola
+        function agregarAColaTTS(texto) {
+            colaTTS.push(texto);
+            console.log(`📥 Mensaje agregado a cola (total: ${colaTTS.length})`);
+            
+            // Si no está reproduciendo, empieza
+            if (!reproduciendo) {
+                procesarColaTTS();
+            }
+            
+            actualizarInfoCola();
+        }
+
+        // Actualizar información de la cola en pantalla
+        function actualizarInfoCola() {
+            const info = document.getElementById('ttsQueueInfo');
+            if (info) {
+                const estado = reproduciendo ? '🔊 Leyendo...' : '⏸️ En pausa';
+                info.textContent = `📋 Cola de lectura: ${colaTTS.length} mensajes pendientes | ${estado}`;
+            }
+        }
+
+        // Limpiar la cola
+        function limpiarCola() {
+            colaTTS = [];
+            window.speechSynthesis.cancel();
+            reproduciendo = false;
+            actualizarInfoCola();
+            agregarLog('🗑️ Cola de voz limpiada', 'info');
+        }
+
+        // Probar voz
+        function probarVoz() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                colaTTS = [];
+                reproduciendo = false;
+                
+                const utterance = new SpeechSynthesisUtterance('Hola, esta es una prueba de voz del chat de voz de Top Tap Tap. Los mensajes se leerán en orden sin cortarse.');
+                utterance.lang = 'es-MX';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                let vozSeleccionada = vocesDisponibles.find(v => 
+                    v.lang === 'es-MX' || v.name.toLowerCase().includes('mexico')
+                );
+                
+                if (!vozSeleccionada) {
+                    vozSeleccionada = vocesDisponibles.find(v => v.lang.startsWith('es'));
+                }
+                
+                if (vozSeleccionada) {
+                    utterance.voice = vozSeleccionada;
+                    console.log(`🔊 Probando voz: ${vozSeleccionada.name} (${vozSeleccionada.lang})`);
+                }
+                
+                window.speechSynthesis.speak(utterance);
+                agregarLog('🔊 Probando voz del sistema...', 'info');
+            } else {
+                alert('Tu navegador no soporta Web Speech API');
+            }
+        }
+
+        // ============ SOCKET.IO EVENTS ============
         socket.on('connect', () => {
             console.log('✅ Conectado al servidor');
             agregarLog('✅ Conectado al servidor', 'success');
@@ -851,31 +980,19 @@
             agregarLog2(`🎁 ${data.nickname} envió ${data.gift} (${data.diamonds} 💎)`, 'success');
         });
 
-        // Chat de voz con Web Speech API
+        // ✅ CHAT DE VOZ CON COLA (NO SE CORTAN LOS MENSAJES)
         socket.on('tts', (data) => {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                
-                const utterance = new SpeechSynthesisUtterance(data.texto);
-                utterance.lang = 'es-MX';
-                utterance.rate = 1.0;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-                
-                const voces = window.speechSynthesis.getVoices();
-                const vozEspanol = voces.find(v => v.lang.startsWith('es'));
-                if (vozEspanol) {
-                    utterance.voice = vozEspanol;
-                }
-                
-                window.speechSynthesis.speak(utterance);
-                console.log('🔊 Leyendo:', data.texto);
-                
-                agregarLog(`🔊 ${data.texto}`, 'info');
+                // En lugar de cancelar, agregamos a la cola
+                agregarAColaTTS(data.texto);
+                console.log('📥 Agregado a cola:', data.texto);
+            } else {
+                console.log('❌ Tu navegador no soporta Web Speech API');
+                agregarLog('❌ Web Speech API no disponible', 'error');
             }
         });
 
-        // Conexión
+        // ============ CONEXIÓN ============
         function conectar() {
             const username = document.getElementById('username').value.trim();
             if (!username) {
@@ -902,10 +1019,13 @@
             document.getElementById('statusDot').classList.remove('connected');
             document.getElementById('statusText').textContent = 'Desconectado';
             
+            // Limpiar cola al desconectar
+            limpiarCola();
+            
             agregarLog('📴 Desconectado', 'info');
         }
 
-        // Configuración de voz
+        // ============ CONFIGURACIÓN ============
         function actualizarConfigVoz() {
             const config = {
                 vozActivada: document.getElementById('vozActivada').checked,
@@ -918,7 +1038,6 @@
             agregarLog('⚙️ Configuración de voz actualizada', 'info');
         }
 
-        // Filtros
         function actualizarFiltros() {
             const config = {
                 filtroActivado: document.getElementById('filtroActivado').checked,
@@ -935,7 +1054,7 @@
             agregarLog('✅ Filtros actualizados', 'success');
         }
 
-        // Logs
+        // ============ LOGS ============
         function agregarLog(mensaje, tipo) {
             const container = document.getElementById('logContainer');
             const entry = document.createElement('div');
@@ -961,7 +1080,6 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Cerrar sesión (simulado)
         function cerrarSesion() {
             if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
                 desconectar();
@@ -969,7 +1087,7 @@
             }
         }
 
-        // Actualizar URLs con el dominio actual
+        // Actualizar URLs
         const dominio = window.location.origin;
         document.getElementById('urlOverlay').textContent = `${dominio}/overlay`;
         document.getElementById('urlRanking').textContent = `${dominio}/ranking`;
@@ -977,9 +1095,6 @@
         // Cargar voces
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoiceschanged = () => {
-                console.log('✅ Voces cargadas:', window.speechSynthesis.getVoices().length);
-            };
         }
     </script>
 </body>
