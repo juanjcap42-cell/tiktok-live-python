@@ -66,7 +66,6 @@ def handle_conectar(data):
         nickname = user.nickname
         comentario = event.comment
         
-        # Aplicar filtros
         permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
         
         if not permitido:
@@ -74,12 +73,10 @@ def handle_conectar(data):
             socketio.emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
             return
         
-        # Limpiar texto para TTS
         texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
         
         print(f'💬 {nickname}: {comentario}')
         
-        # Enviar al dashboard
         socketio.emit('chat', {
             'nickname': nickname,
             'comment': comentario,
@@ -87,7 +84,6 @@ def handle_conectar(data):
             'uniqueId': unique_id
         })
         
-        # Si el chat de voz está activado, enviar al navegador
         if config_voz['vozActivada']:
             debe_hablar = True
             
@@ -112,7 +108,6 @@ def handle_conectar(data):
             if debe_hablar:
                 nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
                 texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
-                # ✅ Enviar al navegador para Web Speech API
                 socketio.emit('tts', {'texto': texto_tts})
                 print(f'🔊 Enviado TTS: {texto_tts[:50]}...')
     
@@ -297,12 +292,13 @@ def get_avatar_url(user):
     except:
         return None
 
+# ✅ INICIO DEL SERVIDOR CON WAITRESS (para Render)
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    port = int(os.environ.get('PORT', 10000))
     
     print('🚀 Servidor iniciado')
     print(f'📡 Puerto: {port}')
     print('🎙️ Chat de voz listo - Actívalo desde el dashboard')
     
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode, allow_unsafe_werkzeug=True)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=port)

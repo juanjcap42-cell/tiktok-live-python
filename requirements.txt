@@ -3,3 +3,5 @@ Flask
 Flask-SocketIO
 python-socketio
 edge-tts
+waitress
+eventlet
