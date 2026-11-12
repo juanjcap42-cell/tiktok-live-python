@@ -669,33 +669,11 @@
             });
         });
 
-        socket.on('tts', (data) => {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                
-                const utterance = new SpeechSynthesisUtterance(data.texto);
-                utterance.lang = 'es-MX';
-                utterance.rate = 1.0;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-                
-                const voces = window.speechSynthesis.getVoices();
-                const vozEspanol = voces.find(v => v.lang.startsWith('es'));
-                if (vozEspanol) {
-                    utterance.voice = vozEspanol;
-                }
-                
-                window.speechSynthesis.speak(utterance);
-                console.log('🔊 Leyendo:', data.texto);
-            }
-        });
+        // ✅ EL OVERLAY NO REPRODUCE VOZ - Solo el dashboard lo hace
+        // Se eliminó el socket.on('tts', ...) para evitar duplicidad de audio
 
         animar();
         socket.emit('solicitar-ranking');
-
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-        }
     </script>
 </body>
 </html>
