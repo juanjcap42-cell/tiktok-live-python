@@ -42,8 +42,6 @@ if db:
 # ============ 2. CONFIGURACIÓN DE FLASK Y SOCKET.IO ============
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'top-tap-tap-secret-key-2026')
-
-# ✅ Usar eventlet para WebSockets
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 client = None
@@ -255,6 +253,8 @@ def handle_conectar(data):
     streamer_email = session['user_id']
     username = data['username'].replace('@', '')
     
+    print(f'🔍 [DEBUG] Conectando a @{username} desde {streamer_email}')
+    
     if db:
         db.collection('streamers').document(streamer_email).update({'tiktok_username': username})
     
@@ -265,32 +265,38 @@ def handle_conectar(data):
     print(f'🔄 Conectando a @{username}...')
     client = TikTokLiveClient(unique_id=username)
     
-    # ✅ IMPORTANTE: Usar socketio.emit() en lugar de emit() dentro de los callbacks
-    # porque se ejecutan en threads separados
-    
     @client.on(ConnectEvent)
     async def on_connect(event):
-        print(f'✅ Conectado! Room ID: {event.room_id}')
+        print(f'✅ [DEBUG] Conectado! Room ID: {event.room_id}')
         socketio.emit('log', {'msg': f'✅ Conectado a @{username}', 'type': 'success'})
     
     @client.on(CommentEvent)
     async def on_comment(event):
         try:
+            print('🔍 [DEBUG] === EVENTO COMMENT RECIBIDO ===')
+            
             user = event.user
             unique_id = get_unique_id(user)
             nickname = get_nickname(user)
             comentario = event.comment
             
-            print(f'💬 {nickname}: {comentario}')
+            print(f'🔍 [DEBUG] Usuario: {nickname} | ID: {unique_id} | Mensaje: {comentario}')
+            
+            # Mostrar SIEMPRE el comentario en el dashboard (para diagnóstico)
             socketio.emit('log', {'msg': f'💬 {nickname}: {comentario}', 'type': 'info'})
             
+            # Verificar filtros
+            print(f'🔍 [DEBUG] Configuración de filtros: {filtros_manager.get_config()}')
             permitido, razon = filtros_manager.filtrar_mensaje(unique_id, nickname, comentario)
+            print(f'🔍 [DEBUG] ¿Permitido? {permitido} | Razón: {razon}')
+            
             if not permitido:
-                print(f'🚫 {razon}: {nickname}')
-                socketio.emit('log', {'msg': f'🚫 {razon}', 'type': 'error'})
+                print(f'🚫 [DEBUG] FILTRADO: {razon}')
+                socketio.emit('log', {'msg': f'🚫 {razon}: {nickname}', 'type': 'error'})
                 return
             
             texto_limpio = filtros_manager.limpiar_texto_para_tts(comentario)
+            print(f'🔍 [DEBUG] Texto limpio para TTS: {texto_limpio}')
             
             socketio.emit('chat', {
                 'nickname': nickname,
@@ -300,27 +306,38 @@ def handle_conectar(data):
             })
             
             if config_voz['vozActivada']:
+                print(f'🔊 [DEBUG] Chat de voz ACTIVADO, procesando TTS...')
                 debe_hablar = True
                 
-                if config_voz['soloSeguidores'] and unique_id not in seguidores:
-                    debe_hablar = False
+                if config_voz['soloSeguidores']:
+                    es_seguidor = unique_id in seguidores
+                    print(f'🔍 [DEBUG] ¿Es seguidor? {es_seguidor}')
+                    debe_hablar = es_seguidor
                 
                 if config_voz['soloDonadores'] and debe_hablar:
                     info = donadores.get(unique_id, {'totalDiamantes': 0})
                     nivel = config_voz['nivelDonadorMinimo']
                     umbrales = {1: 1, 2: 50, 3: 100, 4: 500, 5: 1000}
-                    if info['totalDiamantes'] < umbrales.get(nivel, 1):
+                    umbral = umbrales.get(nivel, 1)
+                    print(f'🔍 [DEBUG] Diamantes: {info["totalDiamantes"]} | Umbral: {umbral}')
+                    if info['totalDiamantes'] < umbral:
                         debe_hablar = False
                 
                 if debe_hablar:
                     nombre_limpio = filtros_manager.limpiar_nombre_para_tts(nickname)
                     texto_tts = f"{nombre_limpio} dice: {texto_limpio}"
+                    print(f'🔊 [DEBUG] EMITIENDO TTS: {texto_tts[:60]}')
                     socketio.emit('tts', {'texto': texto_tts})
-                    print(f'🔊 TTS: {texto_tts[:50]}...')
+                else:
+                    print(f'🔇 [DEBUG] NO SE HABLA (debe_hablar=False)')
+            else:
+                print(f'🔇 [DEBUG] Chat de voz NO ACTIVADO (config_voz={config_voz["vozActivada"]})')
+                
         except Exception as e:
-            print(f'❌ Error on_comment: {e}')
+            print(f'❌ [ERROR] on_comment: {e}')
             import traceback
             traceback.print_exc()
+            socketio.emit('log', {'msg': f'❌ Error: {str(e)}', 'type': 'error'})
     
     @client.on(LikeEvent)
     async def on_like(event):
@@ -330,6 +347,8 @@ def handle_conectar(data):
             nickname = get_nickname(user)
             likes = getattr(event, 'like_count', getattr(event, 'total_count', 1))
             avatar = get_avatar_url(user)
+            
+            print(f'❤️ [DEBUG] LIKE: {nickname} dio {likes}')
             
             seguidores.add(unique_id)
             guardar_seguidor(streamer_email, unique_id, nickname, avatar)
@@ -342,11 +361,10 @@ def handle_conectar(data):
             if avatar and not ranking_likes[unique_id]['avatar']:
                 ranking_likes[unique_id]['avatar'] = avatar
             
-            print(f'❤️ {nickname} dio {likes} likes')
             socketio.emit('like', {'nickname': nickname, 'likes': likes, 'avatar': avatar, 'uniqueId': unique_id})
             enviar_ranking_actualizado()
         except Exception as e:
-            print(f'❌ Error on_like: {e}')
+            print(f'❌ [ERROR] on_like: {e}')
     
     @client.on(GiftEvent)
     async def on_gift(event):
@@ -357,6 +375,8 @@ def handle_conectar(data):
             nombre_regalo = event.gift.name
             diamantes = event.gift.diamond_count
             avatar = get_avatar_url(user)
+            
+            print(f'🎁 [DEBUG] GIFT: {nickname} envió {nombre_regalo} ({diamantes} 💎)')
             
             es_rosa = 'rose' in nombre_regalo.lower() or 'quiéreme' in nombre_regalo.lower()
             rosas = 1 if es_rosa else 0
@@ -375,9 +395,11 @@ def handle_conectar(data):
             
             socketio.emit('gift', {'nickname': nickname, 'gift': nombre_regalo, 'diamonds': diamantes, 'avatar': avatar, 'uniqueId': unique_id})
         except Exception as e:
-            print(f'❌ Error on_gift: {e}')
+            print(f'❌ [ERROR] on_gift: {e}')
     
-    threading.Thread(target=lambda: asyncio.run(client.run()), daemon=True).start()
+    # ✅ IMPORTANTE: Usar eventlet.spawn en lugar de threading.Thread
+    print(f'🚀 [DEBUG] Iniciando bucle de TikTokLive...')
+    eventlet.spawn(lambda: asyncio.run(client.run()))
     emit('log', {'msg': f'⏳ Conectando a @{username}...', 'type': 'info'})
 
 @socketio.on('desconectar')
@@ -391,17 +413,22 @@ def handle_desconectar():
 @socketio.on('config-voz')
 def handle_config_voz(config):
     global config_voz
+    print(f'🔧 [DEBUG] Actualizando config de voz: {config}')
+    
     for key in ['vozActivada', 'soloSeguidores', 'soloDonadores', 'nivelDonadorMinimo', 'soloQuiéreme', 'cantidadQuiéremeMinima']:
         if key in config: config_voz[key] = config[key]
     if 'filtros' in config:
         filtros_manager.set_config(config['filtros'])
         emit('log', {'msg': '⚙️ Filtros actualizados', 'type': 'success'})
     
+    print(f'🔧 [DEBUG] Config final: {config_voz}')
+    
     estado = "ACTIVADO" if config_voz['vozActivada'] else "DESACTIVADO"
     emit('log', {'msg': f'🔊 Chat de voz {estado}', 'type': 'success' if config_voz['vozActivada'] else 'info'})
 
 @socketio.on('actualizar-filtros')
 def handle_actualizar_filtros(config):
+    print(f'🔧 [DEBUG] Actualizando filtros: {config}')
     filtros_manager.set_config(config)
     emit('log', {'msg': '✅ Filtros actualizados', 'type': 'success'})
 
@@ -445,10 +472,10 @@ def get_avatar_url(user):
     except:
         return None
 
-# ============ 9. INICIO DEL SERVIDOR CON EVENTLET ============
+# ============ 9. INICIO DEL SERVIDOR ============
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    print('🚀 Servidor Top Tap Tap con Eventlet (WebSockets)')
+    print('🚀 Servidor Top Tap Tap con Eventlet')
     print(f'📡 Puerto: {port}')
     
     import eventlet
