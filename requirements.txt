@@ -5,3 +5,4 @@ python-socketio
 edge-tts
 waitress
 eventlet
+firebase-admin
